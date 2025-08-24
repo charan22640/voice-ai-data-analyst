@@ -120,6 +120,8 @@ def status():
         return ('', 204)
     """AI service health check (lightweight)"""
     api_key_ok = bool(os.getenv('GEMINI_API_KEY'))
+    model_status = gemini_service.get_model_status()
+    
     return jsonify({
         'success': True,
         'status': 'healthy',
@@ -127,5 +129,29 @@ def status():
             'gemini_api_key': 'configured' if api_key_ok else 'missing',
             'tts': 'ready'
         },
-        'api_key_configured': api_key_ok
+        'api_key_configured': api_key_ok,
+        'model_info': model_status
     })
+
+@ai_bp.route('/model', methods=['POST', 'GET'])
+def model():
+    """Get or set the current AI model"""
+    if request.method == 'GET':
+        return jsonify({
+            'success': True,
+            **gemini_service.get_model_status()
+        })
+    
+    try:
+        data = request.get_json()
+        if not data or 'model' not in data:
+            return jsonify({'success': False, 'error': 'No model specified'}), 400
+        
+        result = gemini_service.set_model(data['model'])
+        if result['success']:
+            return jsonify({'success': True, **result})
+        else:
+            return jsonify({'success': False, **result}), 400
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Model switch failed: {str(e)}'}), 500

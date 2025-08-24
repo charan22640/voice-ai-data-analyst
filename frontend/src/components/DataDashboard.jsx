@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react'
+import SampleDatasets from './SampleDatasets'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Upload, FileText, BarChart3, Search, X, Loader2, TrendingUp, Database } from 'lucide-react'
 
@@ -120,92 +121,95 @@ const DataDashboard = ({ onDatasetLoaded }) => {
       </motion.div>
 
       {!datasetInfo ? (
-        /* Upload Area */
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="relative"
-        >
-          <div
-            className={`glass rounded-2xl p-12 text-center border-2 border-dashed transition-all duration-300 ${
-              dragActive
-                ? 'border-primary bg-primary/10 scale-105'
-                : 'border-white/20 hover:border-white/40'
-            }`}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
+        <>
+          {/* Upload Area */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative"
           >
-            <AnimatePresence>
-              {isLoading ? (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="space-y-4"
-                >
-                  <Loader2 className="w-16 h-16 text-primary mx-auto animate-spin" />
-                  <p className="text-white text-lg">Processing your dataset...</p>
-                </motion.div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="space-y-6"
-                >
-                  <div className="relative">
-                    <Upload className="w-16 h-16 text-primary mx-auto mb-4" />
-                    {dragActive && (
-                      <motion.div
-                        className="absolute inset-0 bg-primary/20 rounded-full"
-                        animate={{ scale: [1, 1.2, 1] }}
-                        transition={{ repeat: Infinity, duration: 1 }}
-                      />
-                    )}
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-xl font-semibold text-white mb-2">
-                      Upload Your Dataset
-                    </h3>
-                    <p className="text-gray-400 mb-6">
-                      Drag and drop your CSV or Excel file here, or click to browse
-                    </p>
-                  </div>
-
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".csv,.xlsx,.xls"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                  
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="bg-primary hover:bg-primary/80 text-white px-8 py-3 rounded-lg font-medium transition-all shadow-lg shadow-primary/25"
+            <div
+              className={`glass rounded-2xl p-12 text-center border-2 border-dashed transition-all duration-300 ${
+                dragActive
+                  ? 'border-primary bg-primary/10 scale-105'
+                  : 'border-white/20 hover:border-white/40'
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            >
+              <AnimatePresence>
+                {isLoading ? (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="space-y-4"
                   >
-                    Choose File
-                  </motion.button>
-
-                  <div className="flex justify-center space-x-8 text-sm text-gray-400">
-                    <div className="flex items-center space-x-2">
-                      <FileText className="w-4 h-4" />
-                      <span>CSV</span>
+                    <Loader2 className="w-16 h-16 text-primary mx-auto animate-spin" />
+                    <p className="text-white text-lg">Processing your dataset...</p>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="space-y-6"
+                  >
+                    <div className="relative">
+                      <Upload className="w-16 h-16 text-primary mx-auto mb-4" />
+                      {dragActive && (
+                        <motion.div
+                          className="absolute inset-0 bg-primary/20 rounded-full"
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ repeat: Infinity, duration: 1 }}
+                        />
+                      )}
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <BarChart3 className="w-4 h-4" />
-                      <span>Excel</span>
+                    <div>
+                      <h3 className="text-xl font-semibold text-white mb-2">
+                        Upload Your Dataset
+                      </h3>
+                      <p className="text-gray-400 mb-6">
+                        Drag and drop your CSV or Excel file here, or click to browse
+                      </p>
                     </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </motion.div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".csv,.xlsx,.xls"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="bg-primary hover:bg-primary/80 text-white px-8 py-3 rounded-lg font-medium transition-all shadow-lg shadow-primary/25"
+                    >
+                      Choose File
+                    </motion.button>
+                    <div className="flex justify-center space-x-8 text-sm text-gray-400">
+                      <div className="flex items-center space-x-2">
+                        <FileText className="w-4 h-4" />
+                        <span>CSV</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <BarChart3 className="w-4 h-4" />
+                        <span>Excel</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+          {/* Sample Datasets Section */}
+          <SampleDatasets onSampleUpload={(dataInfo) => {
+            setDatasetInfo(dataInfo)
+            onDatasetLoaded(true)
+          }} />
+        </>
       ) : (
         /* Dataset Loaded */
         <div className="space-y-6">
@@ -238,16 +242,16 @@ const DataDashboard = ({ onDatasetLoaded }) => {
             {/* Stats Cards */}
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-slate-800/50 rounded-lg p-4 text-center border border-white/10">
-                <div className="text-2xl font-bold text-primary">{datasetInfo.rows}</div>
+                <div className="text-2xl font-bold text-primary">{datasetInfo.numeric_columns?.length || 0}</div>
                 <div className="text-sm text-gray-400">Numeric Columns</div>
               </div>
               <div className="bg-slate-800/50 rounded-lg p-4 text-center border border-white/10">
-                <div className="text-2xl font-bold text-blue-400">{Math.floor(datasetInfo.columns / 2)}</div>
+                <div className="text-2xl font-bold text-blue-400">{datasetInfo.categorical_columns?.length || 0}</div>
                 <div className="text-sm text-gray-400">Text Columns</div>
               </div>
               <div className="bg-slate-800/50 rounded-lg p-4 text-center border border-white/10">
-                <div className="text-2xl font-bold text-purple-400">0</div>
-                <div className="text-sm text-gray-400">Missing Values</div>
+                <div className="text-2xl font-bold text-purple-400">{datasetInfo.total_rows || datasetInfo.rows || 0}</div>
+                <div className="text-sm text-gray-400">Total Rows</div>
               </div>
             </div>
           </motion.div>
