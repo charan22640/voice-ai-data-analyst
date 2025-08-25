@@ -46,42 +46,21 @@ def upload():
                 os.remove(filepath)
             return jsonify(result), 500
         
-        # Generate AI insights about the dataset
-        data_info_str = f"""
-        Dataset Information:
-        - Rows: {result['shape'][0]}
-        - Columns: {result['shape'][1]}
-        - Column Names: {', '.join(result['columns'])}
-        - Numeric Columns: {', '.join(result['info']['numeric_columns'])}
-        - Categorical Columns: {', '.join(result['info']['categorical_columns'])}
-        """
+        # Add comprehensive analytics dashboard
+        result['analytics_dashboard'] = data_service.get_analytics_dashboard()
+        result['ai_dataset_context'] = data_service.get_ai_dataset_context()
         
-        ai_insights = gemini_service.explain_insights({'dataset_info': data_info_str})
-        
-        response_data = {
+        return jsonify({
             'success': True,
-            'file_info': {
-                'filename': filename,
-                'size': result['shape'],
-                'columns': result['columns']
-            },
-            'data_info': result['info'],
-            'ai_insights': ai_insights,
-            'suggestions': [
-                "What's the average of numeric columns?",
-                "Show me correlations between variables",
-                "Analyze the distribution of data",
-                "Generate a summary of the dataset"
-            ]
-        }
-        
-        # Clean up uploaded file after processing
-        if os.path.exists(filepath):
-            os.remove(filepath)
-        
-        return jsonify(response_data)
+            'message': 'File uploaded and analyzed successfully',
+            'filename': unique_filename,
+            **result
+        })
         
     except Exception as e:
+        # Clean up uploaded file on error
+        if 'filepath' in locals() and os.path.exists(filepath):
+            os.remove(filepath)
         return jsonify({'error': f'Upload failed: {str(e)}'}), 500
 
 @data_bp.route('/query', methods=['POST'])
@@ -209,3 +188,68 @@ def suggestions():
         
     except Exception as e:
         return jsonify({'error': f'Suggestions generation failed: {str(e)}'}), 500
+
+@data_bp.route('/analytics-dashboard', methods=['GET'])
+def analytics_dashboard():
+    """Get comprehensive analytics dashboard"""
+    try:
+        if data_service.current_data is None:
+            return jsonify({'error': 'No dataset loaded'}), 400
+        
+        dashboard = data_service.get_analytics_dashboard()
+        return jsonify({
+            'success': True,
+            'dashboard': dashboard
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Dashboard generation failed: {str(e)}'}), 500
+
+@data_bp.route('/ai-context', methods=['GET'])
+def ai_context():
+    """Get AI-readable dataset context"""
+    try:
+        if data_service.current_data is None:
+            return jsonify({'error': 'No dataset loaded'}), 400
+        
+        context = data_service.get_ai_dataset_context()
+        return jsonify({
+            'success': True,
+            'context': context
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Context generation failed: {str(e)}'}), 500
+
+@data_bp.route('/ai-query', methods=['POST'])
+def ai_query():
+    """Process AI queries about the dataset"""
+    try:
+        data = request.get_json()
+        if not data or 'question' not in data:
+            return jsonify({'error': 'No question provided'}), 400
+        
+        result = data_service.query_dataset_for_ai(data['question'])
+        return jsonify({
+            'success': True,
+            **result
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'AI query failed: {str(e)}'}), 500
+
+@data_bp.route('/statistics', methods=['GET'])
+def statistics():
+    """Get detailed statistics for all columns"""
+    try:
+        if data_service.current_data is None:
+            return jsonify({'error': 'No dataset loaded'}), 400
+        
+        dashboard = data_service.get_analytics_dashboard()
+        return jsonify({
+            'success': True,
+            'statistics': dashboard['summary_statistics']
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Statistics generation failed: {str(e)}'}), 500

@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Mic, MicOff, Send, Volume2, VolumeX, Loader2 } from 'lucide-react'
 import VoiceButton from './VoiceButton'
 import ChatHistory from './ChatHistory'
-import StatusVisualizer from './StatusVisualizer'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import { useTextToSpeech } from '../hooks/useTextToSpeech'
 
@@ -146,40 +145,72 @@ const AssistantUI = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="w-4/5 mx-auto">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-8"
+        className="text-center mb-4"
       >
         <h2 className="text-3xl font-bold text-white mb-2">AI Assistant</h2>
         <p className="text-gray-400">Voice-powered conversations with intelligent AI</p>
       </motion.div>
 
-      {/* Status Visualizer */}
-      <StatusVisualizer status={assistantStatus} />
+      {/* Simple Status Visualizer */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex items-center justify-center mb-4"
+      >
+        <motion.div
+          className={`w-12 h-12 rounded-full border-2 flex items-center justify-center ${
+            assistantStatus === 'ready' ? 'border-primary text-primary' : 
+            assistantStatus === 'listening' ? 'border-red-400 text-red-400' :
+            assistantStatus === 'processing' ? 'border-yellow-400 text-yellow-400' :
+            'border-blue-400 text-blue-400'
+          }`}
+          animate={assistantStatus !== 'ready' ? { 
+            scale: [1, 1.1, 1],
+            borderColor: assistantStatus === 'listening' ? ['#f87171', '#dc2626', '#f87171'] :
+                        assistantStatus === 'processing' ? ['#fbbf24', '#d97706', '#fbbf24'] :
+                        ['#60a5fa', '#3b82f6', '#60a5fa']
+          } : {}}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <motion.div
+            className={`w-2 h-2 rounded-full ${
+              assistantStatus === 'ready' ? 'bg-primary' : 
+              assistantStatus === 'listening' ? 'bg-red-400' :
+              assistantStatus === 'processing' ? 'bg-yellow-400' :
+              'bg-blue-400'
+            }`}
+            animate={assistantStatus !== 'ready' ? { scale: [1, 1.5, 1] } : {}}
+            transition={{ duration: 1, repeat: Infinity }}
+          />
+        </motion.div>
+        <span className="ml-3 text-sm text-gray-300 font-medium">
+          {assistantStatus === 'ready' && 'Ready to chat'}
+          {assistantStatus === 'listening' && 'Listening...'}
+          {assistantStatus === 'processing' && 'Processing...'}
+          {assistantStatus === 'speaking' && 'Speaking...'}
+        </span>
+      </motion.div>
 
       {/* Chat Container */}
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="glass rounded-2xl p-6 mb-6 h-96 flex flex-col"
+        className="glass rounded-2xl p-6 mb-4 h-[600px] flex flex-col"
       >
         {/* Chat Header */}
         <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
           <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-primary rounded-full animate-pulse"></div>
-            <span className="text-sm text-gray-300">
-              {assistantStatus === 'ready' && 'Ready to chat'}
-              {assistantStatus === 'listening' && 'Listening...'}
-              {assistantStatus === 'processing' && 'Processing...'}
-              {assistantStatus === 'speaking' && 'Speaking...'}
-            </span>
+            <div className="w-2 h-2 bg-primary rounded-full"></div>
+            <span className="text-sm text-gray-300">Nova Assistant</span>
           </div>
           <button
             onClick={clearChat}
-            className="text-xs text-gray-400 hover:text-white transition-colors"
+            className="text-xs text-gray-400 hover:text-white transition-colors px-3 py-1 rounded-md hover:bg-white/10"
           >
             Clear Chat
           </button>
@@ -248,25 +279,25 @@ const AssistantUI = () => {
       </motion.div>
 
       {/* Feature Cards */}
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="grid md:grid-cols-3 gap-3">
         {[
           {
             title: 'Voice Commands',
-            description: 'Speak naturally to interact with Nova',
+            description: 'Speak naturally to interact',
             status: 'Available',
-            icon: <Mic className="w-6 h-6" />
+            icon: <Mic className="w-4 h-4" />
           },
           {
             title: 'Text-to-Speech',
             description: 'Listen to AI responses',
             status: 'Available',
-            icon: <Volume2 className="w-6 h-6" />
+            icon: <Volume2 className="w-4 h-4" />
           },
           {
             title: 'Smart Context',
-            description: 'Contextual conversations with memory',
+            description: 'Contextual conversations',
             status: 'Active',
-            icon: <div className="w-6 h-6 bg-gradient-to-r from-primary to-blue-400 rounded-full"></div>
+            icon: <div className="w-4 h-4 bg-gradient-to-r from-primary to-blue-400 rounded-full"></div>
           }
         ].map((feature, index) => (
           <motion.div
@@ -274,13 +305,13 @@ const AssistantUI = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            className="glass glass-hover rounded-xl p-4 text-center"
+            className="glass glass-hover rounded-lg p-3 text-center"
           >
-            <div className="flex justify-center mb-3 text-primary">
+            <div className="flex justify-center mb-2 text-primary">
               {feature.icon}
             </div>
-            <h3 className="font-semibold text-white mb-1">{feature.title}</h3>
-            <p className="text-sm text-gray-400 mb-2">{feature.description}</p>
+            <h3 className="font-medium text-white text-sm mb-1">{feature.title}</h3>
+            <p className="text-xs text-gray-400 mb-2">{feature.description}</p>
             <span className={`text-xs px-2 py-1 rounded-full ${
               feature.status === 'Active' ? 'bg-blue-500/20 text-blue-400' : 'bg-primary/20 text-primary'
             }`}>

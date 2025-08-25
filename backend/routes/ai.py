@@ -42,7 +42,7 @@ def process():
 
 @ai_bp.route('/chat', methods=['POST'])
 def chat():
-    """Contextual chat conversation with improved history parsing"""
+    """Contextual chat conversation with improved history parsing and data context"""
     try:
         data = request.get_json(silent=True) or {}
         message = data.get('message')
@@ -67,6 +67,16 @@ def chat():
         context = "\n".join(context_lines[-12:])  # cap lines to avoid runaway context
         if context:
             context = f"Conversation so far (most recent last):\n{context}\n---\n"
+        
+        # Add dataset context if available
+        try:
+            from services.data_service import DataService
+            data_service = DataService()
+            if data_service.current_data is not None:
+                dataset_context = data_service.get_ai_dataset_context()
+                context += f"\nCurrent Dataset Context:\n{dataset_context}\n---\n"
+        except:
+            pass  # Continue without dataset context if there's an error
 
         result = gemini_service.generate_response(message, context)
 
