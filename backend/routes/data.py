@@ -14,6 +14,50 @@ ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'xls'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+@data_bp.route('/quality', methods=['GET'])
+def get_data_quality():
+    """Get data quality metrics"""
+    try:
+        quality_metrics = data_service.get_data_quality()
+        return jsonify({'success': True, 'quality': quality_metrics})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@data_bp.route('/summary', methods=['GET'])
+def get_summary_stats():
+    """Get summary statistics"""
+    try:
+        if data_service.current_data is None:
+            return jsonify({'success': False, 'error': 'No data loaded'}), 400
+        summary = data_service.get_summary_stats()
+        return jsonify({'success': True, 'summary': summary})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@data_bp.route('/visualize', methods=['POST'])
+def get_visualization_data():
+    """Get data for visualization"""
+    try:
+        if data_service.current_data is None:
+            return jsonify({'success': False, 'error': 'No data loaded'}), 400
+            
+        data = request.get_json()
+        columns = data.get('columns', [])
+        
+        if not columns:
+            return jsonify({'success': False, 'error': 'No columns specified'}), 400
+            
+        # Get data for specified columns
+        vis_data = data_service.current_data[columns].to_dict('records')
+        
+        return jsonify({
+            'success': True,
+            'data': vis_data,
+            'columns': columns
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @data_bp.route('/upload', methods=['POST'])
 def upload():
     """Handle file upload and initial analysis"""

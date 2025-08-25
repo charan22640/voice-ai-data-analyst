@@ -36,6 +36,122 @@ class DataService(SerializationMixin):
         self.analysis_history = []  # Track previous analyses
         self.column_meanings = {}  # AI-inferred column meanings
         self.insights_cache = {}  # Cache AI insights
+        
+    def get_data_quality(self) -> Dict[str, Any]:
+        """Calculate data quality metrics for the current dataset"""
+        if self.current_data is None:
+            raise ValueError("No data loaded")
+            
+        quality_metrics = {
+            'completeness': {},
+            'uniqueness': {},
+            'data_types': {},
+            'statistics': {}
+        }
+        
+        for column in self.current_data.columns:
+            # Completeness
+            missing_count = self.current_data[column].isnull().sum()
+            total_count = len(self.current_data)
+            completeness = 1 - (missing_count / total_count)
+            quality_metrics['completeness'][column] = {
+                'score': round(completeness * 100, 2),
+                'missing_count': int(missing_count)
+            }
+            
+            # Uniqueness
+            unique_count = self.current_data[column].nunique()
+            uniqueness = unique_count / total_count
+            quality_metrics['uniqueness'][column] = {
+                'score': round(uniqueness * 100, 2),
+                'unique_count': int(unique_count)
+            }
+            
+            # Data types
+            dtype = str(self.current_data[column].dtype)
+            quality_metrics['data_types'][column] = dtype
+            
+            # Basic statistics for numeric columns
+            if np.issubdtype(self.current_data[column].dtype, np.number):
+                stats = {
+                    'min': float(self.current_data[column].min()),
+                    'max': float(self.current_data[column].max()),
+                    'mean': float(self.current_data[column].mean()),
+                    'std': float(self.current_data[column].std())
+                }
+                quality_metrics['statistics'][column] = stats
+        
+        return quality_metrics
+    
+    def get_summary_stats(self) -> Dict[str, Any]:
+        """Get summary statistics for the current dataset"""
+        if self.current_data is None:
+            return {
+                'row_count': 0,
+                'column_count': 0,
+                'memory_usage': 0,
+                'numeric_columns': [],
+                'categorical_columns': [],
+                'datetime_columns': [],
+                'column_stats': {}
+            }
+            
+        try:
+            summary = {
+                'row_count': len(self.current_data),
+                'column_count': len(self.current_data.columns),
+                'memory_usage': int(self.current_data.memory_usage().sum()),
+                'numeric_columns': [],
+                'categorical_columns': [],
+                'datetime_columns': [],
+                'column_stats': {}
+            }
+            
+            for column in self.current_data.columns:
+                col_summary = {
+                    'dtype': str(self.current_data[column].dtype),
+                    'unique_count': int(self.current_data[column].nunique()),
+                    'missing_count': int(self.current_data[column].isnull().sum())
+                }
+                
+                if np.issubdtype(self.current_data[column].dtype, np.number):
+                    summary['numeric_columns'].append(column)
+                    col_summary.update({
+                        'min': float(self.current_data[column].min()),
+                        'max': float(self.current_data[column].max()),
+                        'mean': float(self.current_data[column].mean()),
+                        'median': float(self.current_data[column].median()),
+                        'std': float(self.current_data[column].std())
+                    })
+                elif self.current_data[column].dtype == 'datetime64[ns]':
+                    summary['datetime_columns'].append(column)
+                    col_summary.update({
+                        'min': str(self.current_data[column].min()),
+                        'max': str(self.current_data[column].max())
+                    })
+                else:
+                    summary['categorical_columns'].append(column)
+                    if col_summary['unique_count'] <= 10:  # Only for columns with few unique values
+                        value_counts = self.current_data[column].value_counts()
+                        col_summary['value_counts'] = {
+                            str(k): int(v) for k, v in value_counts.items()
+                        }
+                
+                summary['column_stats'][column] = col_summary
+            
+            return summary
+            
+        except Exception as e:
+            return {
+                'error': f'Error generating summary stats: {str(e)}',
+                'row_count': 0,
+                'column_count': 0,
+                'memory_usage': 0,
+                'numeric_columns': [],
+                'categorical_columns': [],
+                'datetime_columns': [],
+                'column_stats': {}
+            }
     
         
     def load_data(self, file_path: str, file_type: str = 'csv') -> Dict[str, Any]:
@@ -58,11 +174,22 @@ class DataService(SerializationMixin):
             self.data_info = self._generate_data_info()
             self.data_context = self._build_data_context()
             
+            # Prepare data for visualization
+            data_dict = self.current_data.to_dict('records')
+            columns = list(self.current_data.columns)
+            
+            # Detect column types
+            numeric_columns = self.current_data.select_dtypes(include=[np.number]).columns.tolist()
+            categorical_columns = [col for col in columns if col not in numeric_columns]
+            
             result = {
                 "success": True,
+                "data": data_dict,
+                "columns": columns,
+                "numeric_columns": numeric_columns,
+                "categorical_columns": categorical_columns,
+                "total_rows": len(self.current_data),
                 "shape": self.current_data.shape,
-                "columns": list(self.current_data.columns),
-                # Convert dtypes to strings so they are JSON serializable
                 "data_types": {col: str(dtype) for col, dtype in self.current_data.dtypes.to_dict().items()},
                 "info": self.data_info,
                 "context": self.data_context,

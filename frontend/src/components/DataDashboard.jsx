@@ -3,6 +3,7 @@ import SampleDatasets from './SampleDatasets'
 import DataVisualizer from './DataVisualizer'
 import DataQualityView from './DataQualityView'
 import DataOverview from './DataOverview'
+import ErrorBoundary from './ErrorBoundary'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Upload, FileText, BarChart3, Search, X, Loader2, 
@@ -231,6 +232,11 @@ const DataDashboard = ({ onDatasetLoaded }) => {
       if (activeTab === 'overview') {
         fetchSummaryStats()
       }
+      if (activeTab === 'visualizations') {
+        // Reset visualization state when switching to visualization tab
+        setSelectedColumns([])
+        setVisualizationType('bar')
+      }
     }
   }, [datasetInfo, activeTab])
 
@@ -279,26 +285,42 @@ const DataDashboard = ({ onDatasetLoaded }) => {
   }
 
   const fetchDataQuality = async () => {
+    if (!datasetInfo) return;
+    
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/data/quality`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
       const data = await response.json()
       if (data.success) {
         setDataQuality(data.quality)
+      } else {
+        console.error('Data quality fetch failed:', data.error)
       }
     } catch (error) {
       console.error('Failed to fetch data quality:', error)
+      setDataQuality(null)
     }
   }
 
   const fetchSummaryStats = async () => {
+    if (!datasetInfo) return;
+    
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/data/summary`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
       const data = await response.json()
       if (data.success) {
         setSummaryStats(data.summary)
+      } else {
+        console.error('Summary stats fetch failed:', data.error)
       }
     } catch (error) {
       console.error('Failed to fetch summary stats:', error)
+      setSummaryStats(null)
     }
   }
 
@@ -439,14 +461,18 @@ const DataDashboard = ({ onDatasetLoaded }) => {
               <DataOverview datasetInfo={datasetInfo} />
             )}
             {activeTab === 'visualizations' && (
-              <DataVisualizer 
-                data={datasetInfo.data}
-                columns={datasetInfo.columns}
-                selectedColumns={selectedColumns}
-                type={visualizationType}
-                onTypeChange={setVisualizationType}
-                onToggleColumn={toggleColumnSelection}
-              />
+              <ErrorBoundary>
+                <DataVisualizer 
+                  data={datasetInfo?.data || []}
+                  columns={datasetInfo?.columns || []}
+                  numericColumns={datasetInfo?.numeric_columns || []}
+                  categoricalColumns={datasetInfo?.categorical_columns || []}
+                  selectedColumns={selectedColumns}
+                  type={visualizationType}
+                  onTypeChange={setVisualizationType}
+                  onToggleColumn={toggleColumnSelection}
+                />
+              </ErrorBoundary>
             )}
             {activeTab === 'quality' && (
               <DataQualityView dataQuality={datasetInfo.data_quality} />

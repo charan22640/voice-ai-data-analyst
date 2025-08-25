@@ -1,15 +1,38 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   LineChart, Line, ScatterChart, Scatter, PieChart, Pie, Cell,
   ResponsiveContainer
 } from 'recharts';
+import { motion } from 'framer-motion';
 import { 
   BarChart3, 
   LineChart as LineChartIcon, 
   ScatterChart as ScatterChartIcon,
   PieChart as PieChartIcon
 } from 'lucide-react';
+import ErrorBoundary from './ErrorBoundary';
+
+const COLORS = [
+  '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8',
+  '#82ca9d', '#ffc658', '#ff7300', '#6b486b', '#a05d56'
+];
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-slate-800 p-3 rounded-lg border border-white/10 shadow-xl">
+        <p className="text-gray-300 mb-2">{label}</p>
+        {payload.map((entry, index) => (
+          <p key={index} className="text-sm" style={{ color: entry.color }}>
+            {entry.name}: {typeof entry.value === 'number' ? entry.value.toLocaleString() : entry.value}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
 
 const VisualizationTypeSelector = ({ type, onTypeChange }) => (
   <div className="flex flex-wrap gap-4 mb-6">
@@ -60,43 +83,102 @@ const VisualizationTypeSelector = ({ type, onTypeChange }) => (
   </div>
 );
 
-const ColumnSelector = ({ columns, selectedColumns, onToggleColumn }) => (
-  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-    {columns?.map(column => (
-      <button
-        key={column}
-        onClick={() => onToggleColumn(column)}
-        className={`text-sm px-3 py-2 rounded-lg transition-all ${
-          selectedColumns.includes(column)
-            ? 'bg-primary/20 border-primary text-primary'
-            : 'bg-slate-800/50 border-white/10 text-gray-400 hover:text-white'
-        } border`}
-      >
-        {column}
-      </button>
-    ))}
-  </div>
-);
+const ColumnSelector = ({ columns, numericColumns = [], categoricalColumns = [], selectedColumns = [], onToggleColumn }) => {
+  const columnTypes = useMemo(() => {
+    if (!columns || !Array.isArray(columns)) return {};
+    if (!numericColumns || !Array.isArray(numericColumns)) return {};
+    
+    return columns.reduce((types, col) => {
+      types[col] = (numericColumns || []).includes(col) ? 'numeric' : 'categorical';
+      return types;
+    }, {});
+  }, [columns, numericColumns]);
+
+  return (
+    <div className="space-y-4 mb-6">
+      <div className="text-sm font-medium text-gray-400 mb-2">Select columns to visualize:</div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {columns?.map(column => (
+          <motion.button
+            key={column}
+            onClick={() => onToggleColumn(column)}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className={`text-sm px-3 py-2 rounded-lg transition-all ${
+              selectedColumns.includes(column)
+                ? 'bg-primary/20 border-primary text-primary'
+                : 'bg-slate-800/50 border-white/10 text-gray-400 hover:text-white'
+            } border flex items-center justify-between`}
+          >
+            <span>{column}</span>
+            <span className={`text-xs px-2 py-1 rounded-full ${
+              columnTypes[column] === 'numeric' 
+                ? 'bg-blue-500/20 text-blue-400'
+                : 'bg-purple-500/20 text-purple-400'
+            }`}>
+              {columnTypes[column] === 'numeric' ? 'numeric' : 'text'}
+            </span>
+          </motion.button>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const Chart = ({ data, type, columns }) => {
   if (!data || !columns || columns.length === 0) {
-    return <div className="text-gray-400">Select columns to visualize</div>;
+    return (
+      <div className="text-center py-12 text-gray-400">
+        <p>Select columns to visualize</p>
+        <p className="text-sm mt-2">Choose at least one column to create a visualization</p>
+      </div>
+    );
   }
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+  const chartData = useMemo(() => {
+    if (type === 'pie' && columns.length >= 2) {
+      // For pie charts, aggregate data by the first column
+      const aggregated = data.reduce((acc, item) => {
+        const key = item[columns[0]];
+        acc[key] = (acc[key] || 0) + Number(item[columns[1]]);
+        return acc;
+      }, {});
+      
+      return Object.entries(aggregated).map(([name, value]) => ({
+        name,
+        value
+      }));
+    }
+    return data;
+  }, [data, columns, type]);
 
   const renderChart = () => {
+    if (!data || !columns || columns.length === 0) {
+      return (
+        <div className="text-center py-12 text-gray-400">
+          <p>Select columns to visualize</p>
+          <p className="text-sm mt-2">Choose at least one column to create a visualization</p>
+        </div>
+      );
+    }
+
     switch (type) {
       case 'bar':
         return (
-          <BarChart data={data}>
+          <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-            <XAxis dataKey={columns[0]} stroke="#9CA3AF" />
-            <YAxis stroke="#9CA3AF" />
-            <Tooltip 
-              contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '0.5rem' }}
-              labelStyle={{ color: '#E5E7EB' }}
+            <XAxis 
+              dataKey={columns[0]} 
+              stroke="#9CA3AF"
+              tick={{ fill: '#9CA3AF' }}
+              tickLine={{ stroke: '#4B5563' }}
             />
+            <YAxis 
+              stroke="#9CA3AF"
+              tick={{ fill: '#9CA3AF' }}
+              tickLine={{ stroke: '#4B5563' }}
+            />
+            <Tooltip content={<CustomTooltip />} />
             <Legend wrapperStyle={{ color: '#9CA3AF' }} />
             {columns.slice(1).map((column, index) => (
               <Bar key={column} dataKey={column} fill={COLORS[index % COLORS.length]} />
@@ -106,73 +188,93 @@ const Chart = ({ data, type, columns }) => {
 
       case 'line':
         return (
-          <LineChart data={data}>
+          <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-            <XAxis dataKey={columns[0]} stroke="#9CA3AF" />
-            <YAxis stroke="#9CA3AF" />
-            <Tooltip 
-              contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '0.5rem' }}
-              labelStyle={{ color: '#E5E7EB' }}
+            <XAxis 
+              dataKey={columns[0]} 
+              stroke="#9CA3AF"
+              tick={{ fill: '#9CA3AF' }}
+              tickLine={{ stroke: '#4B5563' }}
             />
+            <YAxis 
+              stroke="#9CA3AF"
+              tick={{ fill: '#9CA3AF' }}
+              tickLine={{ stroke: '#4B5563' }}
+            />
+            <Tooltip content={<CustomTooltip />} />
             <Legend wrapperStyle={{ color: '#9CA3AF' }} />
             {columns.slice(1).map((column, index) => (
-              <Line 
-                key={column} 
-                type="monotone" 
-                dataKey={column} 
-                stroke={COLORS[index % COLORS.length]} 
+              <Line
+                key={column}
+                type="monotone"
+                dataKey={column}
+                stroke={COLORS[index % COLORS.length]}
+                strokeWidth={2}
+                dot={{ fill: COLORS[index % COLORS.length], r: 4 }}
+                activeDot={{ r: 6 }}
               />
             ))}
           </LineChart>
         );
 
       case 'scatter':
+        if (columns.length < 2) {
+          return <div className="text-gray-400">Select at least two numeric columns for a scatter plot</div>;
+        }
         return (
           <ScatterChart>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-            <XAxis dataKey={columns[0]} stroke="#9CA3AF" />
-            <YAxis dataKey={columns[1]} stroke="#9CA3AF" />
-            <Tooltip 
-              contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '0.5rem' }}
-              labelStyle={{ color: '#E5E7EB' }}
+            <XAxis 
+              dataKey={columns[0]} 
+              name={columns[0]}
+              stroke="#9CA3AF"
+              tick={{ fill: '#9CA3AF' }}
+              tickLine={{ stroke: '#4B5563' }}
             />
+            <YAxis 
+              dataKey={columns[1]}
+              name={columns[1]}
+              stroke="#9CA3AF"
+              tick={{ fill: '#9CA3AF' }}
+              tickLine={{ stroke: '#4B5563' }}
+            />
+            <Tooltip content={<CustomTooltip />} />
             <Legend wrapperStyle={{ color: '#9CA3AF' }} />
-            <Scatter 
-              name={`${columns[0]} vs ${columns[1]}`} 
-              data={data} 
-              fill={COLORS[0]} 
+            <Scatter
+              name={`${columns[0]} vs ${columns[1]}`}
+              data={chartData}
+              fill={COLORS[0]}
             />
           </ScatterChart>
         );
 
       case 'pie':
-        const total = data.reduce((sum, item) => sum + Number(item[columns[1]] || 0), 0);
-        const pieData = data.map(item => ({
-          name: String(item[columns[0]]),
-          value: (Number(item[columns[1]] || 0) / total) * 100
-        }));
-
+        if (columns.length < 2) {
+          return <div className="text-gray-400">Select two columns for a pie chart (category and value)</div>;
+        }
         return (
           <PieChart>
             <Pie
-              data={pieData}
+              data={chartData}
+              nameKey="name"
+              dataKey="value"
               cx="50%"
               cy="50%"
+              outerRadius={80}
+              label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
               labelLine={false}
-              outerRadius={150}
-              fill="#8884d8"
-              dataKey="value"
-              label={({ name, value }) => `${name} (${value.toFixed(1)}%)`}
             >
-              {pieData.map((entry, index) => (
-                <Cell key={index} fill={COLORS[index % COLORS.length]} />
+              {chartData.map((entry, index) => (
+                <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip 
-              contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '0.5rem' }}
-              labelStyle={{ color: '#E5E7EB' }}
+            <Tooltip content={<CustomTooltip />} />
+            <Legend 
+              wrapperStyle={{ color: '#9CA3AF' }}
+              formatter={(value, entry) => (
+                <span style={{ color: '#9CA3AF' }}>{value}</span>
+              )}
             />
-            <Legend wrapperStyle={{ color: '#9CA3AF' }} />
           </PieChart>
         );
 
@@ -182,13 +284,26 @@ const Chart = ({ data, type, columns }) => {
   };
 
   return (
-    <ResponsiveContainer width="100%" height={400}>
-      {renderChart()}
-    </ResponsiveContainer>
+    <ErrorBoundary>
+      <ResponsiveContainer width="100%" height={400}>
+        {renderChart()}
+      </ResponsiveContainer>
+    </ErrorBoundary>
   );
 };
 
-const DataVisualizer = ({ data, columns, selectedColumns, type, onTypeChange, onToggleColumn }) => {
+// Using the imported ErrorBoundary component instead of defining it here
+
+const DataVisualizer = ({ 
+  data = [], 
+  columns = [], 
+  numericColumns = [],
+  categoricalColumns = [],
+  selectedColumns = [], 
+  type = 'bar', 
+  onTypeChange, 
+  onToggleColumn 
+}) => {
   return (
     <div className="space-y-6">
       <VisualizationTypeSelector type={type} onTypeChange={onTypeChange} />
@@ -196,6 +311,7 @@ const DataVisualizer = ({ data, columns, selectedColumns, type, onTypeChange, on
         columns={columns} 
         selectedColumns={selectedColumns} 
         onToggleColumn={onToggleColumn}
+        data={data}
       />
       <Chart 
         data={data} 
