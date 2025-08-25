@@ -46,16 +46,24 @@ def upload():
                 os.remove(filepath)
             return jsonify(result), 500
         
-        # Add comprehensive analytics dashboard
-        result['analytics_dashboard'] = data_service.get_analytics_dashboard()
-        result['ai_dataset_context'] = data_service.get_ai_dataset_context()
+        # Get all the necessary data
+        dashboard = data_service.get_analytics_dashboard()
+        ai_context = data_service.get_ai_dataset_context()
+        brief_summary = data_service.get_brief_summary()
         
-        return jsonify({
+        # Merge all data together
+        complete_result = {
             'success': True,
             'message': 'File uploaded and analyzed successfully',
             'filename': unique_filename,
-            **result
-        })
+            'dashboard': dashboard,
+            'ai_context': ai_context,
+            'brief_summary': brief_summary,
+            **result  # This includes shape, columns, data_types, etc.
+        }
+        
+        # Ensure everything is JSON safe before sending
+        return jsonify(data_service._json_safe(complete_result))
         
     except Exception as e:
         # Clean up uploaded file on error

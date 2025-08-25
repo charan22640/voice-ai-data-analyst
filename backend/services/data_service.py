@@ -7,6 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import plotly.utils
 import seaborn as sns
+from services.mixins.serialization_mixin import SerializationMixin
 import os
 import json
 from io import StringIO
@@ -26,7 +27,7 @@ warnings.filterwarnings('ignore')
 plt.style.use('dark_background')
 sns.set_theme(style="darkgrid", palette="viridis")
 
-class DataService:
+class DataService(SerializationMixin):
     def __init__(self, static_dir: str = 'static'):
         self.static_dir = static_dir
         self.current_data = None
@@ -35,6 +36,7 @@ class DataService:
         self.analysis_history = []  # Track previous analyses
         self.column_meanings = {}  # AI-inferred column meanings
         self.insights_cache = {}  # Cache AI insights
+    
         
     def load_data(self, file_path: str, file_type: str = 'csv') -> Dict[str, Any]:
         """Load dataset from file with enhanced context awareness"""
@@ -56,15 +58,17 @@ class DataService:
             self.data_info = self._generate_data_info()
             self.data_context = self._build_data_context()
             
-            return {
+            result = {
                 "success": True,
                 "shape": self.current_data.shape,
                 "columns": list(self.current_data.columns),
-                "data_types": self.current_data.dtypes.to_dict(),
+                # Convert dtypes to strings so they are JSON serializable
+                "data_types": {col: str(dtype) for col, dtype in self.current_data.dtypes.to_dict().items()},
                 "info": self.data_info,
                 "context": self.data_context,
                 "ai_summary": self._generate_ai_data_summary()
             }
+            return self._json_safe(result)
             
         except Exception as e:
             return {"error": f"Failed to load data: {str(e)}"}
@@ -166,8 +170,7 @@ class DataService:
             "ai_insights": self._generate_comprehensive_ai_insights(),
             "recommendations": self._get_analysis_recommendations()
         }
-        
-        return dashboard
+        return self._json_safe(dashboard)
     
     def _get_comprehensive_statistics(self) -> Dict[str, Any]:
         """Get comprehensive statistical analysis"""
@@ -351,6 +354,172 @@ class DataService:
         
         return charts
     
+    def get_brief_summary(self) -> str:
+        """Generate an intelligent, context-aware summary of the dataset"""
+        if self.current_data is None:
+            return "No dataset is currently loaded."
+            
+        try:
+            # Advanced data type inference
+            column_patterns = self._analyze_column_patterns()
+            relationships = self._detect_column_relationships()
+            key_metrics = self._identify_key_metrics()
+            data_quality = self._assess_data_quality()
+            temporal_aspects = self._analyze_temporal_aspects()
+            
+            # Build comprehensive dataset profile
+            profile = {
+                'primary_entity': self._infer_primary_entity(),
+                'key_dimensions': self._identify_dimensions(),
+                'metrics': key_metrics,
+                'temporal_range': temporal_aspects.get('range'),
+                'data_quality': {
+                    'completeness': data_quality.get('completeness', 0),
+                    'consistency': data_quality.get('consistency', 0),
+                    'issues': data_quality.get('issues', [])
+                },
+                'relationships': relationships,
+                'patterns': column_patterns
+            }
+            
+            # Generate natural language summary
+            summary_parts = []
+            
+            # Main dataset description
+            summary_parts.append(f"This dataset contains {self._get_entity_description(profile)}")
+            
+            # Key metrics and dimensions
+            if profile['metrics']:
+                summary_parts.append(f"Key metrics include {', '.join(profile['metrics'][:3])}")
+            if profile['key_dimensions']:
+                summary_parts.append(f"analyzed across {', '.join(profile['key_dimensions'][:3])}")
+            
+            # Temporal context
+            if profile['temporal_range']:
+                summary_parts.append(f"covering {profile['temporal_range']}")
+            
+            # Data quality insights
+            if profile['data_quality']['issues']:
+                summary_parts.append("Note: " + self._format_data_quality_message(profile['data_quality']))
+            
+            # Potential analysis suggestions
+            analysis_suggestions = self._generate_analysis_suggestions(profile)
+            if analysis_suggestions:
+                summary_parts.append("\nSuggested analyses: " + analysis_suggestions[0])
+            
+            return " ".join(summary_parts)
+            
+        except Exception as e:
+            return "This is a dataset with " + ", ".join(self.current_data.columns)
+
+    def _analyze_column_patterns(self) -> dict:
+        """Analyze patterns and characteristics of each column"""
+        patterns = {}
+        
+        for column in self.current_data.columns:
+            col_data = self.current_data[column]
+            patterns[column] = {
+                'type': str(col_data.dtype),
+                'unique_count': col_data.nunique(),
+                'missing_pct': (col_data.isna().sum() / len(col_data)) * 100,
+                'sample_values': col_data.dropna().unique()[:5].tolist(),
+                'distribution_type': self._detect_distribution_type(col_data),
+                'potential_role': self._infer_column_role(column, col_data)
+            }
+            
+        return patterns
+    
+    def _detect_column_relationships(self) -> list:
+        """Detect potential relationships between columns"""
+        relationships = []
+        numeric_cols = self.current_data.select_dtypes(include=[np.number]).columns
+        
+        # Correlation analysis for numeric columns
+        if len(numeric_cols) > 1:
+            corr_matrix = self.current_data[numeric_cols].corr()
+            strong_correlations = []
+            for i in range(len(numeric_cols)):
+                for j in range(i+1, len(numeric_cols)):
+                    corr = corr_matrix.iloc[i, j]
+                    if abs(corr) > 0.7:  # Strong correlation threshold
+                        strong_correlations.append({
+                            'columns': [numeric_cols[i], numeric_cols[j]],
+                            'correlation': corr,
+                            'type': 'strong_correlation'
+                        })
+            relationships.extend(strong_correlations)
+        
+        # Categorical relationship analysis
+        cat_cols = self.current_data.select_dtypes(include=['object']).columns
+        for col1 in cat_cols:
+            for col2 in cat_cols:
+                if col1 < col2:  # Avoid duplicate combinations
+                    relation = self._analyze_categorical_relationship(col1, col2)
+                    if relation:
+                        relationships.append(relation)
+        
+        return relationships
+    
+    def _identify_key_metrics(self) -> list:
+        """Identify potential key metrics in the dataset"""
+        metrics = []
+        numeric_cols = self.current_data.select_dtypes(include=[np.number]).columns
+        
+        for col in numeric_cols:
+            # Check for common metric patterns
+            if any(term in col.lower() for term in ['amount', 'price', 'cost', 'revenue', 'profit', 
+                                                  'count', 'quantity', 'score', 'rate', 'ratio']):
+                metrics.append({
+                    'name': col,
+                    'type': 'metric',
+                    'aggregation': self._suggest_aggregation(col),
+                    'range': [float(self.current_data[col].min()), float(self.current_data[col].max())],
+                    'distribution': self._summarize_distribution(self.current_data[col])
+                })
+        
+        return metrics
+    
+    def _analyze_temporal_aspects(self) -> dict:
+        """Analyze temporal aspects of the dataset"""
+        temporal_info = {'has_temporal': False, 'columns': [], 'range': None}
+        
+        # Identify date/time columns
+        date_columns = []
+        for col in self.current_data.columns:
+            if self._is_temporal_column(col):
+                date_columns.append(col)
+                
+        if date_columns:
+            temporal_info['has_temporal'] = True
+            temporal_info['columns'] = date_columns
+            
+            # Get overall date range
+            for col in date_columns:
+                try:
+                    col_data = pd.to_datetime(self.current_data[col])
+                    date_range = f"from {col_data.min().strftime('%Y-%m-%d')} to {col_data.max().strftime('%Y-%m-%d')}"
+                    temporal_info['range'] = date_range
+                    break
+                except:
+                    continue
+        
+        return temporal_info
+    
+    def _generate_analysis_suggestions(self, profile: dict) -> list:
+        """Generate intelligent analysis suggestions based on dataset profile"""
+        suggestions = []
+        
+        if profile['temporal_range']:
+            suggestions.append("Trend analysis over time")
+            
+        if profile['metrics'] and profile['key_dimensions']:
+            suggestions.append(f"Breakdown of {profile['metrics'][0]} by {profile['key_dimensions'][0]}")
+            
+        if len(profile['metrics']) > 1:
+            suggestions.append(f"Correlation analysis between {' and '.join(profile['metrics'][:2])}")
+            
+        return suggestions
+
     def get_ai_dataset_context(self) -> str:
         """Get comprehensive dataset context for AI consumption"""
         if self.current_data is None:
@@ -893,6 +1062,95 @@ class DataService:
             if "inconsistent_formatting" in quality["issues"]:
                 recommendations.append(f"Standardize formatting in '{col}'")
         return recommendations
+
+    def _get_analysis_recommendations(self) -> List[Dict[str, Any]]:
+        """Provide structured analysis recommendations.
+
+        Returns a list of dicts with: category, recommendation, reason, priority.
+        This fills the missing method referenced when building the analytics dashboard.
+        """
+        if self.current_data is None:
+            return []
+
+        recs: List[Dict[str, Any]] = []
+        info = self.data_info or {}
+        quality = info.get('data_quality', {})
+        column_stats = info.get('column_stats', {})
+
+        # Data quality focused
+        missing_cols = [c for c, v in (info.get('missing_values', {}) or {}).items() if v > 0]
+        if missing_cols:
+            recs.append({
+                'category': 'data_quality',
+                'recommendation': 'Handle missing values',
+                'reason': f"{len(missing_cols)} columns contain missing data",
+                'priority': 'high'
+            })
+        if quality.get('duplicate_rows'):
+            recs.append({
+                'category': 'data_quality',
+                'recommendation': 'Remove duplicate rows',
+                'reason': f"{quality['duplicate_rows']} duplicate rows detected",
+                'priority': 'medium'
+            })
+
+        # Variability / feature engineering
+        low_var = [c for c, st in column_stats.items() if st.get('type') == 'numeric' and st.get('std') in (0, None)]
+        if low_var:
+            recs.append({
+                'category': 'feature_engineering',
+                'recommendation': 'Drop or combine low-variance columns',
+                'reason': f"{len(low_var)} numeric columns with zero/undefined variance",
+                'priority': 'low'
+            })
+
+        # Correlation / multicollinearity
+        corr_highlights = self._get_correlation_highlights()
+        if corr_highlights:
+            top = corr_highlights[0]
+            recs.append({
+                'category': 'relationships',
+                'recommendation': 'Investigate strongest correlation',
+                'reason': f"{top['var1']} ~ {top['var2']} (r={top['correlation']})",
+                'priority': 'medium'
+            })
+
+        # Distribution / outliers
+        outlier_summary = self._detect_outliers_comprehensive()
+        high_outlier_cols = [c for c, v in outlier_summary.items() if v.get('outlier_percentage', 0) > 5]
+        if high_outlier_cols:
+            recs.append({
+                'category': 'outliers',
+                'recommendation': 'Apply outlier treatment',
+                'reason': f"Columns with >5% outliers: {', '.join(high_outlier_cols[:5])}",
+                'priority': 'medium'
+            })
+
+        # Suggested advanced analyses
+        if len(info.get('numeric_columns', [])) >= 2:
+            recs.append({
+                'category': 'advanced',
+                'recommendation': 'Run multivariate analysis / PCA',
+                'reason': 'Multiple numeric columns available',
+                'priority': 'low'
+            })
+        if len(info.get('categorical_columns', [])) and len(info.get('numeric_columns', [])):
+            recs.append({
+                'category': 'segmentation',
+                'recommendation': 'Group numeric metrics by top categorical variable',
+                'reason': 'Mixed data types present',
+                'priority': 'medium'
+            })
+
+        # Deduplicate recommendations by (category, recommendation)
+        seen = set()
+        unique_recs = []
+        for r in recs:
+            key = (r['category'], r['recommendation'])
+            if key not in seen:
+                seen.add(key)
+                unique_recs.append(r)
+        return unique_recs
     
     def _interpret_correlation(self, var1: str, var2: str, correlation: float) -> str:
         """Interpret correlation between two variables"""
@@ -1375,3 +1633,269 @@ class DataService:
             }
         
         return outlier_info
+
+    # =============================
+    # Missing AI/analysis helper methods (added to fix attribute errors)
+    # =============================
+
+    def _generate_comprehensive_ai_insights(self) -> Dict[str, Any]:
+        """Generate high-level AI style insights summarizing dataset health, key stats and relationships.
+
+        This is a lightweight, deterministic implementation (no external LLM calls) so backend
+        routes relying on it do not fail. It leverages already computed metadata to assemble
+        narrative + structured bullets. Cached by dataset hash for performance.
+        """
+        if self.current_data is None:
+            return {"error": "No dataset loaded"}
+
+        cache_key = 'comprehensive'
+        if cache_key in self.insights_cache:
+            return self.insights_cache[cache_key]
+
+        info = self.data_info or self._generate_data_info()
+        numeric_cols = info.get('numeric_columns', [])
+        categorical_cols = info.get('categorical_columns', [])
+
+        insights = {
+            "dataset_shape": f"{info.get('total_rows', 0)} rows x {info.get('total_columns', 0)} columns",
+            "data_quality_score": info.get('data_quality', {}).get('completeness_score'),
+            "issues_summary": list(info.get('data_quality', {}).get('uniformity_issues', {}).keys()),
+            "top_numeric_volatility": self._rank_numeric_by_std(numeric_cols)[:3],
+            "strong_correlations": self._get_correlation_highlights(),
+            "recommended_next_steps": self._get_recommended_next_steps(),
+            "narrative": self._compose_insights_narrative(info)
+        }
+
+        self.insights_cache[cache_key] = insights
+        return insights
+
+    def _generate_ai_insights(self, analysis_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate contextual AI style insight bullets for a single analysis result."""
+        if not analysis_result:
+            return {}
+        bullets = []
+        atype = analysis_result.get('analysis_type')
+        if atype == 'correlation':
+            strong = analysis_result.get('strong_correlations', [])
+            if strong:
+                bullets.append(f"Detected {len(strong)} strong relationships; highest |r| = {max(abs(c['correlation']) for c in strong):.2f}.")
+        if atype == 'distribution':
+            stats = analysis_result.get('statistics', {})
+            if stats:
+                skew = stats.get('skewness')
+                if skew is not None:
+                    if abs(skew) < 0.5:
+                        bullets.append('Distribution is approximately symmetric.')
+                    elif skew > 0:
+                        bullets.append('Distribution is right-skewed (tail to high values).')
+                    else:
+                        bullets.append('Distribution is left-skewed (tail to low values).')
+        if atype == 'averages':
+            results = analysis_result.get('results', {})
+            if results:
+                top = sorted(results.items(), key=lambda x: x[1], reverse=True)[:1]
+                if top:
+                    bullets.append(f"Highest mean: {top[0][0]} = {top[0][1]:.2f}")
+        if atype == 'trend':
+            slope = analysis_result.get('slope')
+            if slope is not None:
+                bullets.append(f"Overall trend {analysis_result.get('trend_direction')} (slope {slope:.4f}).")
+        if not bullets:
+            bullets.append('Analysis completed with no critical anomalies detected.')
+        return {"analysis_type": atype, "bullets": bullets}
+
+    # ---- Query enrichment helpers ----
+    def _get_distribution_summary(self, column: str) -> Dict[str, Any]:
+        if self.current_data is None or column not in self.current_data.columns:
+            return {}
+        series = self.current_data[column].dropna()
+        if series.empty or series.dtype not in [np.float64, np.int64]:
+            return {}
+        return {
+            "mean": float(series.mean()),
+            "std": float(series.std()),
+            "min": float(series.min()),
+            "max": float(series.max()),
+            "skew": float(series.skew()),
+            "kurtosis": float(series.kurtosis())
+        }
+
+    def _get_specific_correlations(self, columns: List[str]) -> Dict[str, Any]:
+        numeric_cols = [c for c in columns if c in self.current_data.select_dtypes(include=[np.number]).columns]
+        if len(numeric_cols) < 2:
+            return {"message": "Need at least two numeric columns"}
+        corr = self.current_data[numeric_cols].corr()
+        pairs = []
+        for i, c1 in enumerate(numeric_cols):
+            for c2 in numeric_cols[i+1:]:
+                pairs.append({"variable_1": c1, "variable_2": c2, "correlation": float(corr.loc[c1, c2])})
+        return {"correlations": sorted(pairs, key=lambda x: abs(x['correlation']), reverse=True)}
+
+    def _get_top_correlations(self) -> Dict[str, Any]:
+        numeric = self.current_data.select_dtypes(include=[np.number])
+        if numeric.shape[1] < 2:
+            return {"message": "Not enough numeric columns"}
+        corr = numeric.corr()
+        pairs = []
+        cols = list(corr.columns)
+        for i in range(len(cols)):
+            for j in range(i+1, len(cols)):
+                val = float(corr.iloc[i, j])
+                pairs.append({"variable_1": cols[i], "variable_2": cols[j], "correlation": val})
+        pairs.sort(key=lambda x: abs(x['correlation']), reverse=True)
+        return {"correlations": pairs[:5]}
+
+    def _get_missing_data_analysis(self) -> Dict[str, Any]:
+        if self.current_data is None:
+            return {}
+        miss = self.current_data.isnull().sum()
+        total = int(miss.sum())
+        return {"total_missing": total, "columns": miss[miss > 0].to_dict()}
+
+    def _get_outlier_analysis(self) -> Dict[str, Any]:
+        numeric_cols = self.current_data.select_dtypes(include=[np.number]).columns
+        out = {}
+        for col in numeric_cols:
+            out[col] = self._detect_outliers_column(self.current_data[col].dropna())
+        return out
+
+    def _analyze_query_intent(self, query: str) -> Dict[str, Any]:
+        q = query.lower()
+        intents = []
+        if any(k in q for k in ['trend','over time']): intents.append('trend')
+        if 'correl' in q: intents.append('correlation')
+        if any(k in q for k in ['average','mean','median']): intents.append('statistics')
+        if any(k in q for k in ['outlier','anomal','unusual']): intents.append('anomaly')
+        return {"intents": intents or ['general']}
+
+    def _suggest_related_analyses(self, query: str, result: Dict[str, Any]) -> List[str]:
+        suggestions = []
+        intents = result.get('query_context', {}).get('intents', [])
+        if 'correlation' in intents:
+            suggestions.append('Run a distribution analysis for correlated variables')
+        if 'trend' in intents:
+            suggestions.append('Decompose time series to check seasonality')
+        if 'statistics' in intents:
+            suggestions.append('Calculate variance and coefficient of variation for numeric columns')
+        if 'anomaly' in intents:
+            suggestions.append('Cluster data points to isolate anomalous groups')
+        if not suggestions:
+            suggestions = ['Generate dataset summary','View top correlations']
+        return suggestions
+
+    def _smart_correlation_analysis(self, mentioned_columns: List[str]) -> Optional[Dict[str, Any]]:
+        numeric = self.current_data.select_dtypes(include=[np.number])
+        if numeric.shape[1] < 2:
+            return None
+        target_cols = [c for c in mentioned_columns if c in numeric.columns] or list(numeric.columns[:3])
+        corr = numeric[target_cols].corr()
+        strong = []
+        for i, c1 in enumerate(target_cols):
+            for c2 in target_cols[i+1:]:
+                val = float(corr.loc[c1, c2])
+                if abs(val) > 0.4:
+                    strong.append({'var1': c1, 'var2': c2, 'correlation': round(val,3)})
+        return {
+            'analysis_type': 'correlation',
+            'correlation_matrix': corr.to_dict(),
+            'strong_correlations': strong,
+            'insights': f"Focused correlation scan across {len(target_cols)} variables"
+        }
+
+    def _temporal_analysis(self, query: str, mentioned_columns: List[str]) -> Optional[Dict[str, Any]]:
+        # Basic temporal analysis using index as time surrogate
+        numeric = self.current_data.select_dtypes(include=[np.number])
+        if numeric.empty:
+            return None
+        col = mentioned_columns[0] if mentioned_columns and mentioned_columns[0] in numeric.columns else numeric.columns[0]
+        series = numeric[col].dropna()
+        if len(series) < 3:
+            return None
+        x = np.arange(len(series))
+        slope = np.polyfit(x, series, 1)[0]
+        return {
+            'analysis_type': 'trend',
+            'slope': float(slope),
+            'trend_direction': 'increasing' if slope > 0 else 'decreasing',
+            'insights': f"Temporal trend detected for {col}: slope {slope:.4f}"
+        }
+
+    def _categorical_breakdown(self, mentioned_columns: List[str]) -> Optional[Dict[str, Any]]:
+        cats = self.current_data.select_dtypes(include=['object'])
+        if cats.empty:
+            return None
+        col = None
+        for c in mentioned_columns:
+            if c in cats.columns:
+                col = c
+                break
+        col = col or cats.columns[0]
+        counts = cats[col].value_counts().head(10)
+        return {
+            'analysis_type': 'categorical_breakdown',
+            'column': col,
+            'top_categories': counts.to_dict(),
+            'insights': f"Top category '{counts.index[0]}' represents {counts.iloc[0] / counts.sum() * 100:.1f}% of records"
+        }
+
+    def _detect_anomalies(self, mentioned_columns: List[str]) -> Optional[Dict[str, Any]]:
+        numeric = self.current_data.select_dtypes(include=[np.number])
+        if numeric.empty:
+            return None
+        col = mentioned_columns[0] if mentioned_columns and mentioned_columns[0] in numeric.columns else numeric.columns[0]
+        series = numeric[col].dropna()
+        if len(series) < 5:
+            return None
+        outinfo = self._detect_outliers_column(series)
+        return {
+            'analysis_type': 'anomaly_detection',
+            'column': col,
+            'outlier_summary': {k: v for k, v in outinfo.items() if k != 'outlier_values'},
+            'insights': f"Detected {outinfo['outlier_count']} potential outliers ({outinfo['outlier_percentage']:.1f}% of observations) in {col}"
+        }
+
+    # ---- Internal helpers for insights assembly ----
+    def _rank_numeric_by_std(self, numeric_cols: List[str]) -> List[Dict[str, Any]]:
+        ranked = []
+        for c in numeric_cols:
+            series = self.current_data[c].dropna()
+            if len(series) > 1:
+                ranked.append({"column": c, "std": float(series.std()), "mean": float(series.mean())})
+        return sorted(ranked, key=lambda x: x['std'], reverse=True)
+
+    def _get_correlation_highlights(self) -> List[Dict[str, Any]]:
+        numeric = self.current_data.select_dtypes(include=[np.number])
+        if numeric.shape[1] < 2:
+            return []
+        corr = numeric.corr()
+        highlights = []
+        cols = list(corr.columns)
+        for i in range(len(cols)):
+            for j in range(i+1, len(cols)):
+                val = float(corr.iloc[i, j])
+                if abs(val) >= 0.6:
+                    highlights.append({"var1": cols[i], "var2": cols[j], "correlation": round(val,3)})
+        return sorted(highlights, key=lambda x: abs(x['correlation']), reverse=True)[:5]
+
+    def _get_recommended_next_steps(self) -> List[str]:
+        steps = []
+        if self.data_info.get('data_quality', {}).get('duplicate_rows'):
+            steps.append('Remove duplicate rows')
+        if self.data_info.get('data_quality', {}).get('columns_with_missing_data'):
+            steps.append('Impute or drop columns with high missing values')
+        if not steps:
+            steps = ['Deep dive into correlation drivers', 'Segment analysis by key categorical variable']
+        return steps
+
+    def _compose_insights_narrative(self, info: Dict[str, Any]) -> str:
+        parts = [f"Dataset has {info.get('total_rows',0)} rows and {info.get('total_columns',0)} columns."]
+        if info.get('data_quality', {}).get('completeness_score') is not None:
+            parts.append(f"Completeness score {info['data_quality']['completeness_score']}%.")
+        strong = self._get_correlation_highlights()
+        if strong:
+            top = strong[0]
+            parts.append(f"Strongest observed correlation: {top['var1']} vs {top['var2']} (r={top['correlation']}).")
+        issues = info.get('data_quality', {}).get('uniformity_issues', {})
+        if issues:
+            parts.append(f"Potential uniformity concerns in {len(issues)} columns.")
+        return ' '.join(parts)

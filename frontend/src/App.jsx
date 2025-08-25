@@ -9,6 +9,7 @@ const App = () => {
   const [currentView, setCurrentView] = useState('assistant') // 'assistant' or 'data'
   const [connectionStatus, setConnectionStatus] = useState('connecting')
   const [datasetLoaded, setDatasetLoaded] = useState(false)
+  const [currentDataset, setCurrentDataset] = useState(null)
 
   // Check backend connection
   useEffect(() => {
@@ -58,9 +59,14 @@ const App = () => {
             transition={{ duration: 0.3 }}
           >
             {currentView === 'assistant' ? (
-              <AssistantUI />
+              <AssistantUI currentDataset={currentDataset} />
             ) : (
-              <DataDashboard onDatasetLoaded={setDatasetLoaded} />
+              <DataDashboard 
+                onDatasetLoaded={(data) => {
+                  setDatasetLoaded(true);
+                  setCurrentDataset(data);
+                }} 
+              />
             )}
           </motion.div>
         </main>

@@ -10,6 +10,74 @@ import {
   ScatterChart, CheckCircle, Table 
 } from 'lucide-react'
 
+const DatasetHeader = ({ activeTab, setActiveTab }) => (
+  <div className="mb-6">
+    <div className="flex space-x-2 border-b border-gray-700">
+      <button
+        onClick={() => setActiveTab('overview')}
+        className={`px-4 py-2 flex items-center space-x-2 ${
+          activeTab === 'overview' 
+            ? 'text-primary border-b-2 border-primary' 
+            : 'text-gray-400 hover:text-gray-300'
+        }`}
+      >
+        <FileText className="w-4 h-4" />
+        <span>Overview</span>
+      </button>
+      <button
+        onClick={() => setActiveTab('visualizations')}
+        className={`px-4 py-2 flex items-center space-x-2 ${
+          activeTab === 'visualizations'
+            ? 'text-primary border-b-2 border-primary'
+            : 'text-gray-400 hover:text-gray-300'
+        }`}
+      >
+        <BarChart3 className="w-4 h-4" />
+        <span>Visualizations</span>
+      </button>
+      <button
+        onClick={() => setActiveTab('quality')}
+        className={`px-4 py-2 flex items-center space-x-2 ${
+          activeTab === 'quality'
+            ? 'text-primary border-b-2 border-primary'
+            : 'text-gray-400 hover:text-gray-300'
+        }`}
+      >
+        <CheckCircle className="w-4 h-4" />
+        <span>Data Quality</span>
+      </button>
+      <button
+        onClick={() => setActiveTab('explore')}
+        className={`px-4 py-2 flex items-center space-x-2 ${
+          activeTab === 'explore'
+            ? 'text-primary border-b-2 border-primary'
+            : 'text-gray-400 hover:text-gray-300'
+        }`}
+      >
+        <Search className="w-4 h-4" />
+        <span>Explore</span>
+      </button>
+    </div>
+  </div>
+);
+
+const DatasetStats = ({ datasetInfo }) => (
+  <div className="grid grid-cols-3 gap-4">
+    <div className="bg-slate-800/50 rounded-lg p-4 text-center border border-white/10">
+      <div className="text-2xl font-bold text-primary">{datasetInfo.numeric_columns?.length || 0}</div>
+      <div className="text-sm text-gray-400">Numeric Columns</div>
+    </div>
+    <div className="bg-slate-800/50 rounded-lg p-4 text-center border border-white/10">
+      <div className="text-2xl font-bold text-blue-400">{datasetInfo.categorical_columns?.length || 0}</div>
+      <div className="text-sm text-gray-400">Text Columns</div>
+    </div>
+    <div className="bg-slate-800/50 rounded-lg p-4 text-center border border-white/10">
+      <div className="text-2xl font-bold text-purple-400">{datasetInfo.total_rows || datasetInfo.rows || 0}</div>
+      <div className="text-sm text-gray-400">Total Rows</div>
+    </div>
+  </div>
+);
+
 const QueryInterface = ({ query, setQuery, analyzeQuery, isAnalyzing }) => (
   <div className="space-y-4">
     <div className="flex items-center space-x-3 mb-4">
@@ -72,74 +140,6 @@ const QueryResults = ({ results }) => (
   </div>
 );
 
-const DatasetStats = ({ datasetInfo }) => (
-  <div className="grid grid-cols-3 gap-4">
-    <div className="bg-slate-800/50 rounded-lg p-4 text-center border border-white/10">
-      <div className="text-2xl font-bold text-primary">{datasetInfo.numeric_columns?.length || 0}</div>
-      <div className="text-sm text-gray-400">Numeric Columns</div>
-    </div>
-    <div className="bg-slate-800/50 rounded-lg p-4 text-center border border-white/10">
-      <div className="text-2xl font-bold text-blue-400">{datasetInfo.categorical_columns?.length || 0}</div>
-      <div className="text-sm text-gray-400">Text Columns</div>
-    </div>
-    <div className="bg-slate-800/50 rounded-lg p-4 text-center border border-white/10">
-      <div className="text-2xl font-bold text-purple-400">{datasetInfo.total_rows || datasetInfo.rows || 0}</div>
-      <div className="text-sm text-gray-400">Total Rows</div>
-    </div>
-  </div>
-);
-
-const DatasetHeader = ({ activeTab, setActiveTab }) => (
-  <div className="mb-6">
-    <div className="flex space-x-2 border-b border-gray-700">
-      <button
-        onClick={() => setActiveTab('overview')}
-        className={`px-4 py-2 flex items-center space-x-2 ${
-          activeTab === 'overview' 
-            ? 'text-primary border-b-2 border-primary' 
-            : 'text-gray-400 hover:text-gray-300'
-        }`}
-      >
-        <FileText className="w-4 h-4" />
-        <span>Overview</span>
-      </button>
-      <button
-        onClick={() => setActiveTab('visualizations')}
-        className={`px-4 py-2 flex items-center space-x-2 ${
-          activeTab === 'visualizations'
-            ? 'text-primary border-b-2 border-primary'
-            : 'text-gray-400 hover:text-gray-300'
-        }`}
-      >
-        <BarChart3 className="w-4 h-4" />
-        <span>Visualizations</span>
-      </button>
-      <button
-        onClick={() => setActiveTab('quality')}
-        className={`px-4 py-2 flex items-center space-x-2 ${
-          activeTab === 'quality'
-            ? 'text-primary border-b-2 border-primary'
-            : 'text-gray-400 hover:text-gray-300'
-        }`}
-      >
-        <CheckCircle className="w-4 h-4" />
-        <span>Data Quality</span>
-      </button>
-      <button
-        onClick={() => setActiveTab('explore')}
-        className={`px-4 py-2 flex items-center space-x-2 ${
-          activeTab === 'explore'
-            ? 'text-primary border-b-2 border-primary'
-            : 'text-gray-400 hover:text-gray-300'
-        }`}
-      >
-        <Search className="w-4 h-4" />
-        <span>Explore</span>
-      </button>
-    </div>
-  </div>
-);
-
 const DataDashboard = ({ onDatasetLoaded }) => {
   const [datasetInfo, setDatasetInfo] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -147,12 +147,12 @@ const DataDashboard = ({ onDatasetLoaded }) => {
   const [queryResults, setQueryResults] = useState(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [dragActive, setDragActive] = useState(false)
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('overview') // 'overview', 'visualizations', 'quality', 'explore'
   const [selectedColumns, setSelectedColumns] = useState([])
   const [visualizationType, setVisualizationType] = useState('bar')
   const [summaryStats, setSummaryStats] = useState(null)
   const [dataQuality, setDataQuality] = useState(null)
-  const [explorationView, setExplorationView] = useState('table')
+  const [explorationView, setExplorationView] = useState('table') // 'table', 'pivot', 'correlation'
   const fileInputRef = useRef(null)
 
   const handleDrag = useCallback((e) => {
@@ -175,6 +175,13 @@ const DataDashboard = ({ onDatasetLoaded }) => {
       uploadFile(files[0])
     }
   }, [])
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      uploadFile(file)
+    }
+  }
 
   const uploadFile = async (file) => {
     if (!file) return
@@ -200,7 +207,7 @@ const DataDashboard = ({ onDatasetLoaded }) => {
       if (data.success) {
         setDatasetInfo(data)
         if (data.columns && data.columns.length > 0) {
-          setSelectedColumns([data.columns[0]])
+          setSelectedColumns([data.columns[0]])  // Select first column by default
         }
         setActiveTab('overview')
         onDatasetLoaded(data)
@@ -214,25 +221,6 @@ const DataDashboard = ({ onDatasetLoaded }) => {
       setIsLoading(false)
     }
   }
-
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      uploadFile(file)
-    }
-  }
-
-  // Fetch data quality and summary stats when dataset is loaded or tab changes
-  useEffect(() => {
-    if (datasetInfo) {
-      if (activeTab === 'quality') {
-        fetchDataQuality()
-      }
-      if (activeTab === 'overview') {
-        fetchSummaryStats()
-      }
-    }
-  }, [datasetInfo, activeTab])
 
   const analyzeQuery = async () => {
     if (!query.trim() || !datasetInfo) return
@@ -302,6 +290,17 @@ const DataDashboard = ({ onDatasetLoaded }) => {
     }
   }
 
+  useEffect(() => {
+    if (datasetInfo) {
+      if (activeTab === 'quality') {
+        fetchDataQuality()
+      }
+      if (activeTab === 'overview') {
+        fetchSummaryStats()
+      }
+    }
+  }, [datasetInfo, activeTab])
+
   return (
     <div className="max-w-6xl mx-auto">
       <motion.div
@@ -317,7 +316,6 @@ const DataDashboard = ({ onDatasetLoaded }) => {
 
       {!datasetInfo ? (
         <>
-          {/* Upload Area */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -399,11 +397,13 @@ const DataDashboard = ({ onDatasetLoaded }) => {
               </AnimatePresence>
             </div>
           </motion.div>
-          {/* Sample Datasets Section */}
-          <SampleDatasets onSampleUpload={(dataInfo) => {
-            setDatasetInfo(dataInfo)
-            onDatasetLoaded(dataInfo)
-          }} />
+
+          <SampleDatasets 
+            onSampleUpload={(dataInfo) => {
+              setDatasetInfo(dataInfo)
+              onDatasetLoaded(dataInfo)
+            }} 
+          />
         </>
       ) : (
         <div className="space-y-6">
@@ -454,36 +454,35 @@ const DataDashboard = ({ onDatasetLoaded }) => {
             {activeTab === 'explore' && (
               <div className="space-y-6">
                 <DatasetStats datasetInfo={datasetInfo} />
+
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="glass rounded-xl p-6"
+                >
+                  <QueryInterface 
+                    query={query}
+                    setQuery={setQuery}
+                    analyzeQuery={analyzeQuery}
+                    isAnalyzing={isAnalyzing}
+                  />
+                </motion.div>
+
+                <AnimatePresence>
+                  {queryResults && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="glass rounded-xl p-6"
+                    >
+                      <QueryResults results={queryResults} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             )}
           </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="glass rounded-xl p-6"
-          >
-            <QueryInterface 
-              query={query}
-              setQuery={setQuery}
-              analyzeQuery={analyzeQuery}
-              isAnalyzing={isAnalyzing}
-            />
-          </motion.div>
-
-          <AnimatePresence>
-            {queryResults && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="glass rounded-xl p-6"
-              >
-                <QueryResults results={queryResults} />
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       )}
     </div>

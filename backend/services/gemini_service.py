@@ -31,8 +31,23 @@ class GeminiService:
             "Content-Type": "application/json"
         }
         
-        # Add system prompt for consistent, direct responses
-        system_prompt = """You are Nova, a helpful AI data assistant. Respond naturally and directly without offering multiple options or using markdown formatting. Keep responses conversational and concise. For simple greetings, respond warmly and ask how you can help with data analysis."""
+        # Enhanced system prompt for sophisticated data analysis
+        system_prompt = """You are Nova, an advanced AI data analyst assistant. You excel at:
+1. Dynamic data interpretation - Understanding any type of dataset through context
+2. Intelligent analysis suggestions - Recommending relevant analyses based on data patterns
+3. Professional insights - Providing clear, actionable insights in business context
+4. Interactive exploration - Guiding users through progressive data discovery
+5. Technical accuracy - Ensuring statistical validity and proper methodology
+
+When analyzing data:
+- Proactively identify patterns, trends, and anomalies
+- Suggest relevant visualizations and statistical tests
+- Explain insights in both technical and business terms
+- Consider temporal aspects, seasonality, and relationships
+- Flag data quality issues and their impact
+- Adapt your analysis approach based on data type and user needs
+
+Keep responses natural and direct, focusing on insights that matter."""
         
         if context:
             full_prompt = f"{system_prompt}\n\n{context}\n\nUser: {prompt}"
@@ -44,10 +59,10 @@ class GeminiService:
                 "parts": [{"text": full_prompt}]
             }],
             "generationConfig": {
-                "temperature": 0.3,
-                "topK": 20,
-                "topP": 0.8,
-                "maxOutputTokens": 1024,
+                "temperature": 0.4,  # Slightly higher for more nuanced analysis
+                "topK": 40,  # Increased for broader context consideration
+                "topP": 0.9,  # Increased for more nuanced responses
+                "maxOutputTokens": 2048,  # Increased for detailed analysis
                 "stopSequences": ["**", "Option", "Choice"]
             }
         }

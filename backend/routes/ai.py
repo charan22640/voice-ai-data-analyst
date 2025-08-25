@@ -42,12 +42,36 @@ def process():
 
 @ai_bp.route('/chat', methods=['POST'])
 def chat():
-    """Contextual chat conversation with improved history parsing and data context"""
+    """Enhanced contextual chat with advanced data analysis capabilities"""
     try:
         data = request.get_json(silent=True) or {}
         message = data.get('message')
         if not message:
             return jsonify({'success': False, 'error': 'No message provided'}), 400
+            
+        # Extract context from request
+        history = data.get('history', [])
+        data_context = data.get('dataContext', {})
+        
+        # Build comprehensive analysis context
+        analysis_context = {
+            'message': message,
+            'history': history[-5:],  # Last 5 messages for immediate context
+            'data_summary': None,
+            'suggested_analyses': [],
+            'data_profile': None
+        }
+        
+        # If we have data loaded, add data-specific context
+        if data_context and 'success' in data_context:
+            from services.data_service import DataService
+            data_service = DataService()
+            
+            # Get rich data context
+            analysis_context['data_summary'] = data_service.get_brief_summary()
+            analysis_context['data_profile'] = data_service.get_data_profile()
+            analysis_context['column_summaries'] = data_service.get_column_summaries()
+            analysis_context['suggested_analyses'] = data_service.suggest_analyses(message)
 
         conversation_history = data.get('history', [])
 

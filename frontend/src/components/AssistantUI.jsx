@@ -6,7 +6,7 @@ import ChatHistory from './ChatHistory'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import { useTextToSpeech } from '../hooks/useTextToSpeech'
 
-const AssistantUI = () => {
+const AssistantUI = ({ currentDataset }) => {
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -39,6 +39,33 @@ const AssistantUI = () => {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
     }
   }, [messages])
+
+  // Update assistant message when dataset is loaded
+  useEffect(() => {
+    if (currentDataset && currentDataset.success) {
+      // Create a descriptive message about the loaded dataset
+      const rows = currentDataset.shape?.[0] || currentDataset.total_rows;
+      const cols = currentDataset.shape?.[1] || currentDataset.total_columns;
+      const summary = currentDataset.ai_context || currentDataset.ai_summary;
+      
+      let content = `I see you've loaded a dataset! `;
+      
+      if (currentDataset.brief_summary) {
+        content += `${currentDataset.brief_summary}. `;
+      }
+      
+      content += `The dataset has ${rows} rows and ${cols} columns.`;
+      content += "\n\nWhat would you like to know about it? You can ask me about specific columns, statistics, or patterns in the data.";
+      
+      const datasetInfo = {
+        id: Date.now(),
+        type: 'assistant',
+        content: content,
+        timestamp: new Date().toISOString()
+      }
+      setMessages(prev => [...prev, datasetInfo])
+    }
+  }, [currentDataset])
 
   // Update input text with speech recognition
   useEffect(() => {
@@ -82,7 +109,8 @@ const AssistantUI = () => {
         body: JSON.stringify({
           message: userMessage.content,
           history: messages.slice(-10), // Last 10 messages for context
-          timestamp: userMessage.timestamp
+          timestamp: userMessage.timestamp,
+          dataContext: currentDataset // Include current dataset context
         })
       })
 
