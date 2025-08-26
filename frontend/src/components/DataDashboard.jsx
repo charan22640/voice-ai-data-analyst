@@ -46,32 +46,37 @@ const QueryInterface = ({ query, setQuery, analyzeQuery, isAnalyzing }) => (
   </div>
 );
 
-const QueryResults = ({ results }) => (
-  <div className="space-y-4">
-    <h3 className="text-lg font-semibold text-white mb-4">Analysis Results</h3>
-    
-    {results.explanation && (
-      <div className="bg-slate-800/50 rounded-lg p-4 mb-4 border border-white/10">
-        <h4 className="font-medium text-white mb-2">AI Explanation</h4>
-        <p className="text-gray-300 text-sm leading-relaxed">
-          {results.explanation}
-        </p>
-      </div>
-    )}
-
-    {results.insights && results.insights.length > 0 && (
-      <div className="space-y-2">
-        <h4 className="font-medium text-white">Key Insights:</h4>
-        {results.insights.map((insight, index) => (
-          <div key={index} className="flex items-center space-x-2 text-sm text-gray-300">
-            <div className="w-2 h-2 bg-primary rounded-full"></div>
-            <span>{insight}</span>
-          </div>
-        ))}
-      </div>
-    )}
-  </div>
-);
+const QueryResults = ({ results }) => {
+  const insightsArray = Array.isArray(results.insights)
+    ? results.insights
+    : typeof results.insights === 'string' && results.insights.trim()
+      ? [results.insights]
+      : []
+  return (
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold text-white mb-4">Analysis Results</h3>
+      {results.explanation && (
+        <div className="bg-slate-800/50 rounded-lg p-4 mb-4 border border-white/10">
+          <h4 className="font-medium text-white mb-2">AI Explanation</h4>
+          <p className="text-gray-300 text-sm leading-relaxed">
+            {results.explanation}
+          </p>
+        </div>
+      )}
+      {insightsArray.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="font-medium text-white">Key Insights:</h4>
+          {insightsArray.map((insight, index) => (
+            <div key={index} className="flex items-center space-x-2 text-sm text-gray-300">
+              <div className="w-2 h-2 bg-primary rounded-full"></div>
+              <span>{insight}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+};
 
 const DatasetStats = ({ datasetInfo }) => (
   <div className="grid grid-cols-3 gap-4">
@@ -156,6 +161,21 @@ const DataDashboard = ({ onDatasetLoaded }) => {
   const [explorationView, setExplorationView] = useState('table')
   const fileInputRef = useRef(null)
 
+  // Initialize selected columns when dataset changes
+  useEffect(() => {
+    if (datasetInfo?.columns?.length > 0) {
+      // For bar charts, select first categorical and first numeric column by default
+      const defaultCategorical = datasetInfo.categorical_columns?.[0]
+      const defaultNumeric = datasetInfo.numeric_columns?.[0]
+      if (defaultCategorical && defaultNumeric) {
+        setSelectedColumns([defaultCategorical, defaultNumeric])
+      } else {
+        // Fallback to first two columns if categorization is not available
+        setSelectedColumns([datasetInfo.columns[0], datasetInfo.columns[1]].filter(Boolean))
+      }
+    }
+  }, [datasetInfo])
+
   const handleDrag = useCallback((e) => {
     e.preventDefault()
     e.stopPropagation()
@@ -181,7 +201,7 @@ const DataDashboard = ({ onDatasetLoaded }) => {
     if (!file) return
     
     const allowedTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
-    if (!allowedTypes.includes(file.type)) {
+    if (!allowedTypes.includes(file.type) && !file.name.endsWith('.csv')) { // Added check for .csv extension
       alert('Please upload a CSV or Excel file')
       return
     }
@@ -252,12 +272,22 @@ const DataDashboard = ({ onDatasetLoaded }) => {
       })
 
       const data = await response.json()
-      
-      if (data.success) {
-        setQueryResults(data)
-      } else {
+      // The backend currently returns { status: 'success', ... } NOT { success: true }
+      if (!response.ok || data.error) {
         throw new Error(data.error || 'Analysis failed')
       }
+
+      const transformed = {
+        ...data,
+        // Normalized fields for QueryResults component (override any raw values)
+        explanation: data.ai_explanation || data.explanation || '',
+        insights: Array.isArray(data.insights)
+          ? data.insights
+          : (typeof data.insights === 'string' && data.insights.trim())
+            ? [data.insights]
+            : []
+      }
+      setQueryResults(transformed)
     } catch (error) {
       console.error('Analysis error:', error)
       alert('Failed to analyze query. Please try again.')

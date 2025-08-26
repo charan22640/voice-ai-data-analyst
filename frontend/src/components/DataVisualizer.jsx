@@ -13,9 +13,18 @@ import {
 } from 'lucide-react';
 import ErrorBoundary from './ErrorBoundary';
 
+// High-contrast palette (first blue adjusted for dark bg visibility)
 const COLORS = [
-  '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8',
-  '#82ca9d', '#ffc658', '#ff7300', '#6b486b', '#a05d56'
+  '#3B82F6', // brighter blue (was #0088FE)
+  '#10B981', // emerald
+  '#F59E0B', // amber
+  '#F97316', // orange
+  '#A78BFA', // violet
+  '#34D399', // green
+  '#FBBF24', // yellow
+  '#EC4899', // pink
+  '#6366F1', // indigo
+  '#F472B6'  // pink light
 ];
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -181,40 +190,65 @@ const Chart = ({ data, type, columns }) => {
             <Tooltip content={<CustomTooltip />} />
             <Legend wrapperStyle={{ color: '#9CA3AF' }} />
             {columns.slice(1).map((column, index) => (
-              <Bar key={column} dataKey={column} fill={COLORS[index % COLORS.length]} />
+              <Bar 
+                key={column} 
+                dataKey={column} 
+                fill={column.toLowerCase().includes('temp') ? '#3B82F6' : // blue for temperature
+                      column.toLowerCase().includes('condition') ? '#10B981' : // emerald for condition
+                      COLORS[index % COLORS.length]} // fallback to color palette
+              />
             ))}
           </BarChart>
         );
 
       case 'line':
+        // Filter only numeric series (ignore text columns like categories)
+        const numericSeries = columns.slice(1).filter(col =>
+          chartData.some(row => {
+            const v = row[col];
+            return v !== null && v !== '' && !isNaN(Number(v));
+          })
+        );
+        const skipped = columns.slice(1).filter(col => !numericSeries.includes(col));
         return (
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-            <XAxis 
-              dataKey={columns[0]} 
-              stroke="#9CA3AF"
-              tick={{ fill: '#9CA3AF' }}
-              tickLine={{ stroke: '#4B5563' }}
-            />
-            <YAxis 
-              stroke="#9CA3AF"
-              tick={{ fill: '#9CA3AF' }}
-              tickLine={{ stroke: '#4B5563' }}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend wrapperStyle={{ color: '#9CA3AF' }} />
-            {columns.slice(1).map((column, index) => (
-              <Line
-                key={column}
-                type="monotone"
-                dataKey={column}
-                stroke={COLORS[index % COLORS.length]}
-                strokeWidth={2}
-                dot={{ fill: COLORS[index % COLORS.length], r: 4 }}
-                activeDot={{ r: 6 }}
+          <>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis 
+                dataKey={columns[0]} 
+                stroke="#9CA3AF"
+                tick={{ fill: '#9CA3AF' }}
+                tickLine={{ stroke: '#4B5563' }}
               />
-            ))}
-          </LineChart>
+              <YAxis 
+                stroke="#9CA3AF"
+                tick={{ fill: '#9CA3AF' }}
+                tickLine={{ stroke: '#4B5563' }}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ color: '#9CA3AF' }} />
+              {numericSeries.map((column, index) => (
+                <Line
+                  key={column}
+                  type="monotone"
+                  dataKey={column}
+                  stroke={COLORS[index % COLORS.length]}
+                  strokeWidth={index === 0 ? 3 : 2}
+                  dot={{ stroke: '#ffffff', strokeWidth: 1, fill: COLORS[index % COLORS.length], r: 5 }}
+                  activeDot={{ r: 7 }}
+                  isAnimationActive={true}
+                />
+              ))}
+            </LineChart>
+            {skipped.length > 0 && (
+              <div className="mt-2 text-xs text-amber-400/80">
+                Skipped non-numeric columns: {skipped.join(', ')}
+              </div>
+            )}
+            {numericSeries.length === 0 && (
+              <div className="mt-4 text-sm text-red-400">No numeric columns selected. Pick at least one numeric column.</div>
+            )}
+          </>
         );
 
       case 'scatter':
