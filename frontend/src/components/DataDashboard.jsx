@@ -497,6 +497,7 @@ const DataDashboard = ({ onDatasetLoaded }) => {
                   columns={datasetInfo?.columns || []}
                   numericColumns={datasetInfo?.numeric_columns || []}
                   categoricalColumns={datasetInfo?.categorical_columns || []}
+                  columnTypes={datasetInfo?.column_types || {}}
                   selectedColumns={selectedColumns}
                   type={visualizationType}
                   onTypeChange={setVisualizationType}

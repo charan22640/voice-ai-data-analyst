@@ -178,9 +178,26 @@ class DataService(SerializationMixin):
             data_dict = self.current_data.to_dict('records')
             columns = list(self.current_data.columns)
             
-            # Detect column types
-            numeric_columns = self.current_data.select_dtypes(include=[np.number]).columns.tolist()
+            # Detect column types and ensure proper type inference
+            def is_numeric(col):
+                dtype = self.current_data[col].dtype
+                return np.issubdtype(dtype, np.number) or str(dtype).startswith(('int', 'float'))
+            
+            numeric_columns = [col for col in columns if is_numeric(col)]
             categorical_columns = [col for col in columns if col not in numeric_columns]
+            
+            # Ensure numeric columns are properly typed for visualization
+            for col in numeric_columns:
+                if not np.issubdtype(self.current_data[col].dtype, np.number):
+                    self.current_data[col] = pd.to_numeric(self.current_data[col], errors='coerce')
+            
+            # Create a map of column types for visualization
+            column_types = {}
+            for col in columns:
+                if col in numeric_columns:
+                    column_types[col] = 'number'
+                else:
+                    column_types[col] = 'text'
             
             result = {
                 "success": True,
@@ -188,6 +205,7 @@ class DataService(SerializationMixin):
                 "columns": columns,
                 "numeric_columns": numeric_columns,
                 "categorical_columns": categorical_columns,
+                "column_types": column_types,
                 "total_rows": len(self.current_data),
                 "shape": self.current_data.shape,
                 "data_types": {col: str(dtype) for col, dtype in self.current_data.dtypes.to_dict().items()},

@@ -92,16 +92,8 @@ const VisualizationTypeSelector = ({ type, onTypeChange }) => (
   </div>
 );
 
-const ColumnSelector = ({ columns, numericColumns = [], categoricalColumns = [], selectedColumns = [], onToggleColumn }) => {
-  const columnTypes = useMemo(() => {
-    if (!columns || !Array.isArray(columns)) return {};
-    if (!numericColumns || !Array.isArray(numericColumns)) return {};
-    
-    return columns.reduce((types, col) => {
-      types[col] = (numericColumns || []).includes(col) ? 'numeric' : 'categorical';
-      return types;
-    }, {});
-  }, [columns, numericColumns]);
+const ColumnSelector = ({ columns, columnTypes = {}, selectedColumns = [], onToggleColumn }) => {
+  // columnTypes is now directly passed from the backend
 
   return (
     <div className="space-y-4 mb-6">
@@ -121,11 +113,11 @@ const ColumnSelector = ({ columns, numericColumns = [], categoricalColumns = [],
           >
             <span>{column}</span>
             <span className={`text-xs px-2 py-1 rounded-full ${
-              columnTypes[column] === 'numeric' 
+              columnTypes[column] === 'number' 
                 ? 'bg-blue-500/20 text-blue-400'
                 : 'bg-purple-500/20 text-purple-400'
             }`}>
-              {columnTypes[column] === 'numeric' ? 'numeric' : 'text'}
+              {columnTypes[column] || 'text'}
             </span>
           </motion.button>
         ))}
@@ -333,6 +325,7 @@ const DataVisualizer = ({
   columns = [], 
   numericColumns = [],
   categoricalColumns = [],
+  columnTypes = {},
   selectedColumns = [], 
   type = 'bar', 
   onTypeChange, 
@@ -343,6 +336,7 @@ const DataVisualizer = ({
       <VisualizationTypeSelector type={type} onTypeChange={onTypeChange} />
       <ColumnSelector 
         columns={columns} 
+        columnTypes={columnTypes}
         selectedColumns={selectedColumns} 
         onToggleColumn={onToggleColumn}
         data={data}
