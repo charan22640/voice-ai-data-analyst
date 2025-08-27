@@ -63,7 +63,8 @@ Keep responses natural and direct, focusing on insights that matter."""
                 "topK": 40,  # Increased for broader context consideration
                 "topP": 0.9,  # Increased for more nuanced responses
                 "maxOutputTokens": 2048,  # Increased for detailed analysis
-                "stopSequences": ["**", "Option", "Choice"]
+                # Avoid stopping on "**"; it appears in normal bold text and was truncating responses
+                "stopSequences": ["Option", "Choice"]
             }
         }
         

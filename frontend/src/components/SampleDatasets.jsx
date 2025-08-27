@@ -52,7 +52,8 @@ const SampleDatasets = ({ onSampleUpload }) => {
       const data = await uploadResponse.json()
       
       if (data.success) {
-        onSampleUpload(data.data_info)
+        // Pass the full dataset payload so the dashboard can render immediately
+        onSampleUpload(data)
       } else {
         throw new Error(data.error || 'Upload failed')
       }

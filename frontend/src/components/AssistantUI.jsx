@@ -7,9 +7,13 @@ import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import { useTextToSpeech } from '../hooks/useTextToSpeech'
 
 const AssistantUI = ({ currentDataset }) => {
+  // Simple unique id generator (stable and collision-resistant enough for UI)
+  const genId = () => (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   const [messages, setMessages] = useState([
     {
-      id: 1,
+      id: genId(),
       type: 'assistant',
       content: "Hello! I'm Nova, your AI data assistant. You can chat with me using voice or text, and I can help you analyze your data. How can I assist you today?",
       timestamp: new Date().toISOString()
@@ -58,7 +62,7 @@ const AssistantUI = ({ currentDataset }) => {
       content += "\n\nWhat would you like to know about it? You can ask me about specific columns, statistics, or patterns in the data.";
       
       const datasetInfo = {
-        id: Date.now(),
+        id: genId(),
         type: 'assistant',
         content: content,
         timestamp: new Date().toISOString()
@@ -91,7 +95,7 @@ const AssistantUI = ({ currentDataset }) => {
     if (!inputText.trim() || isLoading) return
 
     const userMessage = {
-      id: Date.now(),
+      id: genId(),
       type: 'user',
       content: inputText.trim(),
       timestamp: new Date().toISOString()
@@ -118,7 +122,7 @@ const AssistantUI = ({ currentDataset }) => {
 
       if (data.success) {
         const assistantMessage = {
-          id: Date.now() + 1,
+          id: genId(),
           type: 'assistant',
           content: data.response,
           timestamp: new Date().toISOString()
@@ -136,7 +140,7 @@ const AssistantUI = ({ currentDataset }) => {
     } catch (error) {
       console.error('Error sending message:', error)
       const errorMessage = {
-        id: Date.now() + 1,
+        id: genId(),
         type: 'assistant',
         content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
         timestamp: new Date().toISOString(),
@@ -165,7 +169,7 @@ const AssistantUI = ({ currentDataset }) => {
 
   const clearChat = () => {
     setMessages([{
-      id: 1,
+      id: genId(),
       type: 'assistant',
       content: "Chat cleared! How can I help you?",
       timestamp: new Date().toISOString()
