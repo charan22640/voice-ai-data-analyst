@@ -542,18 +542,40 @@ const DataVisualizer = ({
       <VisualizationTypeSelector type={type} onTypeChange={onTypeChange} />
       {(recommendedByType[type] && recommendedByType[type].length > 0) && (
         <div className={`border rounded-xl p-3 ${hasSelection && !canRenderSelected ? 'bg-amber-500/10 border-amber-400/20' : 'bg-slate-800/40 border-white/10'}`}>
-          <div className="text-xs text-gray-400 mb-2">Recommended pairs for {type}</div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs text-gray-400">Recommended pairs for {type}</div>
+            {(() => {
+              const arraysEqual = (a = [], b = []) => a.length === b.length && a.every((v, i) => v === b[i]);
+              const selRec = (recommendedByType[type] || []).find(r => arraysEqual(r.cols, selectedColumns));
+              return selRec ? (
+                <div className="text-[11px] text-primary/90">
+                  Selected: <span className="font-medium">{selRec.label}</span>
+                </div>
+              ) : null;
+            })()}
+          </div>
           <div className="flex flex-wrap gap-2">
-            {recommendedByType[type].map((p, i) => (
-              <button
-                key={`${type}-${i}`}
-                onClick={() => applyPairSelection(p.cols)}
-                className="text-xs px-3 py-1.5 rounded-lg border border-white/10 bg-slate-800/60 hover:bg-slate-700/60 text-gray-200"
-                title={`${type}: ${p.label}`}
-              >
-                {p.label}
-              </button>
-            ))}
+            {recommendedByType[type].map((p, i) => {
+              const arraysEqual = (a = [], b = []) => a.length === b.length && a.every((v, idx) => v === b[idx]);
+              const isSelected = arraysEqual(p.cols, selectedColumns);
+              return (
+                <button
+                  key={`${type}-${i}`}
+                  onClick={() => applyPairSelection(p.cols)}
+                  aria-pressed={isSelected}
+                  className={
+                    `text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                      isSelected
+                        ? 'bg-primary/20 border-primary text-primary'
+                        : 'bg-slate-800/60 border-white/10 text-gray-200 hover:bg-slate-700/60'
+                    }`
+                  }
+                  title={`${type}: ${p.label}`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
