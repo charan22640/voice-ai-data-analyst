@@ -64,22 +64,31 @@ Nova is a sophisticated voice-activated AI data assistant that combines advanced
 - Python 3.11+
 - [Gemini API Key](https://ai.google.dev/)
 
-## Images
-<img width="1746" height="981" alt="Screenshot 2025-08-27 124159" src="https://github.com/user-attachments/assets/5cf14450-74ab-4657-ac04-978c214dfd12" />
+## 📸 Application Screenshots
 
-<img width="1775" height="977" alt="Screenshot 2025-08-27 124210" src="https://github.com/user-attachments/assets/4e4636c4-4086-44cc-b800-ada7fb469517" />
+### Main Dashboard Interface
+<img width="1746" height="981" alt="Nova AI Data Assistant Main Dashboard" src="https://github.com/user-attachments/assets/5cf14450-74ab-4657-ac04-978c214dfd12" />
 
-<img width="1342" height="878" alt="Screenshot 2025-08-27 124240" src="https://github.com/user-attachments/assets/bb210f7c-6098-491f-9511-fccefd2c1bf9" />
+### Data Analysis View
+<img width="1775" height="977" alt="Interactive Data Analysis Dashboard" src="https://github.com/user-attachments/assets/4e4636c4-4086-44cc-b800-ada7fb469517" />
 
-<img width="1462" height="917" alt="Screenshot 2025-08-27 124252" src="https://github.com/user-attachments/assets/8a8665a4-0d7e-42cd-9366-d87a6a8508ac" />
+### Statistical Insights
+<img width="1342" height="878" alt="Statistical Analysis and Insights View" src="https://github.com/user-attachments/assets/bb210f7c-6098-491f-9511-fccefd2c1bf9" />
 
-<img width="1081" height="936" alt="Screenshot 2025-08-27 124303" src="https://github.com/user-attachments/assets/68d03efe-a37c-4a8d-b405-5e8ff81a6419" />
+### Correlation Matrix
+<img width="1462" height="917" alt="Data Correlation Matrix Visualization" src="https://github.com/user-attachments/assets/8a8665a4-0d7e-42cd-9366-d87a6a8508ac" />
 
-<img width="1307" height="850" alt="Screenshot 2025-08-27 124315" src="https://github.com/user-attachments/assets/65288ecb-4670-43cb-ab33-c48c29df34a8" />
+### Voice Interaction Interface
+<img width="1081" height="936" alt="Voice Commands and AI Response Interface" src="https://github.com/user-attachments/assets/68d03efe-a37c-4a8d-b405-5e8ff81a6419" />
 
-<img width="1452" height="988" alt="Screenshot 2025-08-27 124330" src="https://github.com/user-attachments/assets/a362d87b-bfbd-4358-8661-4ba1f43593d2" />
+### Data Quality Overview
+<img width="1307" height="850" alt="Data Quality Assessment Dashboard" src="https://github.com/user-attachments/assets/65288ecb-4670-43cb-ab33-c48c29df34a8" />
 
-<img width="1464" height="975" alt="Screenshot 2025-08-27 124642" src="https://github.com/user-attachments/assets/8563866e-2b40-4b20-95a7-74959abf7a8e" />
+### Chart Visualization
+<img width="1452" height="988" alt="Interactive Data Visualization Charts" src="https://github.com/user-attachments/assets/a362d87b-bfbd-4358-8661-4ba1f43593d2" />
+
+### Sample Dataset Explorer
+<img width="1464" height="975" alt="Sample Dataset Selection and Analysis" src="https://github.com/user-attachments/assets/8563866e-2b40-4b20-95a7-74959abf7a8e" />
 
 
 
