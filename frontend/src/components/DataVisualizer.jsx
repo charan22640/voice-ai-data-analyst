@@ -208,6 +208,24 @@ const Chart = ({ data, type, columns, columnTypes = {} }) => {
       return pieComputed.data;
     }
 
+    // Scatter: build x/y numeric pairs (supports '__index__' fallback)
+    if (type === 'scatter' && Array.isArray(columns) && columns.length >= 2) {
+      const sXKey = columns[0];
+      const sYKey = columns[1];
+      const rows = Array.isArray(data) ? data : [];
+      const out = [];
+      const maxPoints = 1000; // guard for very large datasets
+      for (let i = 0; i < rows.length && out.length < maxPoints; i++) {
+        const row = rows[i] || {};
+        const xRaw = sXKey === '__index__' ? i + 1 : Number(row[sXKey]);
+        const yRaw = sYKey === '__index__' ? i + 1 : Number(row[sYKey]);
+        if (isFinite(xRaw) && isFinite(yRaw)) {
+          out.push({ [sXKey]: xRaw, [sYKey]: yRaw });
+        }
+      }
+      return out;
+    }
+
     // Bar with category->numeric: aggregate top 10 categories
     if (type === 'bar' && columns.length >= 2 && columnTypes[columns[0]] !== 'number') {
       const categoryCol = columns[0];
@@ -288,35 +306,38 @@ const Chart = ({ data, type, columns, columnTypes = {} }) => {
 
 
       case 'scatter':
-  if (columns.length < 2) {
-          return <div className="text-gray-400">Select at least two numeric columns for a scatter plot</div>;
+        if (columns.length < 2) {
+          return <div className="text-gray-400">Pick a pair from the recommendations above</div>;
+        }
+        const sXKey = columns[0];
+        const sYKey = columns[1];
+        const xLabel = sXKey === '__index__' ? 'Index' : sXKey;
+        const yLabel = sYKey === '__index__' ? 'Index' : sYKey;
+        if (!chartData || chartData.length === 0) {
+          return <div className="text-gray-400">No numeric pairs found. Try another recommendation.</div>;
         }
         return (
           <ResponsiveContainer width="100%" height={400}>
-          <ScatterChart>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-            <XAxis 
-              dataKey={columns[0]} 
-              name={columns[0]}
-              stroke="#9CA3AF"
-              tick={{ fill: '#9CA3AF' }}
-              tickLine={{ stroke: '#4B5563' }}
-            />
-            <YAxis 
-              dataKey={columns[1]}
-              name={columns[1]}
-              stroke="#9CA3AF"
-              tick={{ fill: '#9CA3AF' }}
-              tickLine={{ stroke: '#4B5563' }}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend wrapperStyle={{ color: '#9CA3AF' }} />
-            <Scatter
-              name={`${columns[0]} vs ${columns[1]}`}
-              data={chartData}
-              fill={COLORS[0]}
-            />
-          </ScatterChart>
+            <ScatterChart>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis
+                dataKey={sXKey}
+                name={xLabel}
+                stroke="#9CA3AF"
+                tick={{ fill: '#9CA3AF' }}
+                tickLine={{ stroke: '#4B5563' }}
+              />
+              <YAxis
+                dataKey={sYKey}
+                name={yLabel}
+                stroke="#9CA3AF"
+                tick={{ fill: '#9CA3AF' }}
+                tickLine={{ stroke: '#4B5563' }}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ color: '#9CA3AF' }} />
+              <Scatter name={`${xLabel} vs ${yLabel}`} data={chartData} fill={COLORS[0]} />
+            </ScatterChart>
           </ResponsiveContainer>
         );
 
@@ -394,7 +415,7 @@ const DataVisualizer = ({
   onToggleColumn,
   onSelectColumns
 }) => {
-  const isNumeric = (col) => columnTypes[col] === 'number';
+  const isNumeric = (col) => col === '__index__' || columnTypes[col] === 'number';
   const canRenderSelected = React.useMemo(() => {
     const sel = Array.isArray(selectedColumns) ? selectedColumns : [];
     if (type === 'bar') {
@@ -427,6 +448,8 @@ const DataVisualizer = ({
     // Chart 2: Scatter (two numerics) or Pie (category -> numeric) as fallback
     if (hasTwoNums) {
       charts.push({ type: 'scatter', columns: [numericColumns[0], numericColumns[1]] });
+    } else if (numericColumns.length === 1) {
+      charts.push({ type: 'scatter', columns: [numericColumns[0], '__index__'] });
     } else if (hasCatNum) {
       charts.push({ type: 'pie', columns: [categoricalColumns[0], numericColumns[0]] });
     }
@@ -442,46 +465,66 @@ const DataVisualizer = ({
 
   const hasSelection = Array.isArray(selectedColumns) && selectedColumns.length > 0;
 
-  // Build recommended pairs for the current chart type
-  const recommendedPairs = useMemo(() => {
-    const pairs = [];
-    if (type === 'bar') {
-      // category x numeric pairs
-      for (const c of categoricalColumns) {
-        for (const n of numericColumns) {
-          pairs.push({ label: `${c} × ${n}`, cols: [c, n] });
-        }
-      }
-      // fallback: single numeric index bar
-      if (pairs.length === 0) {
-        for (const n of numericColumns) pairs.push({ label: `${n}`, cols: [n] });
-      }
-    } else if (type === 'scatter') {
-      // numeric vs numeric pairs
-      for (let i = 0; i < numericColumns.length; i++) {
-        for (let j = i + 1; j < numericColumns.length; j++) {
-          const a = numericColumns[i];
-          const b = numericColumns[j];
-          pairs.push({ label: `${a} vs ${b}`, cols: [a, b] });
-        }
-      }
-    } else if (type === 'pie') {
-      // category only, and category + numeric
-      for (const c of categoricalColumns) {
-        pairs.push({ label: `${c} (count)`, cols: [c] });
-        for (const n of numericColumns) {
-          pairs.push({ label: `${c} → sum(${n})`, cols: [c, n] });
-        }
-      }
-      // fallback: numeric-only count (binned)
-      if (pairs.length === 0) {
-        for (const n of numericColumns) pairs.push({ label: `${n} (binned)`, cols: [n] });
+  // Build recommended pairs for ALL chart types
+  const recommendedByType = useMemo(() => {
+    const rec = { bar: [], scatter: [], pie: [] };
+    // Bar: categorical × numeric or single numeric
+    for (const c of categoricalColumns) {
+      for (const n of numericColumns) rec.bar.push({ label: `${c} × ${n}`, cols: [c, n] });
+    }
+    if (rec.bar.length === 0) for (const n of numericColumns) rec.bar.push({ label: `${n}`, cols: [n] });
+    // Scatter: numeric vs numeric
+    for (let i = 0; i < numericColumns.length; i++) {
+      for (let j = i + 1; j < numericColumns.length; j++) {
+        const a = numericColumns[i];
+        const b = numericColumns[j];
+        rec.scatter.push({ label: `${a} vs ${b}`, cols: [a, b] });
       }
     }
-    return pairs.slice(0, 16); // limit to 16 chips to avoid clutter
-  }, [type, categoricalColumns, numericColumns]);
+    // Scatter fallback: numeric vs index when only one numeric column exists
+    if (rec.scatter.length === 0 && numericColumns.length === 1) {
+      const n = numericColumns[0];
+      rec.scatter.push({ label: `${n} vs index`, cols: [n, '__index__'] });
+    }
+    // Pie: category (count) and category + numeric; numeric-only binned fallback
+    for (const c of categoricalColumns) {
+      rec.pie.push({ label: `${c} (count)`, cols: [c] });
+      for (const n of numericColumns) rec.pie.push({ label: `${c} → sum(${n})`, cols: [c, n] });
+    }
+    if (rec.pie.length === 0) for (const n of numericColumns) rec.pie.push({ label: `${n} (binned)`, cols: [n] });
+    return {
+      bar: rec.bar.slice(0, 12),
+      scatter: rec.scatter.slice(0, 12),
+      pie: rec.pie.slice(0, 12)
+    };
+  }, [categoricalColumns, numericColumns]);
 
-  const applyPairSelection = (cols) => {
+  // Auto-select a valid default pair for the active chart when selection is empty/invalid
+  React.useEffect(() => {
+    const sel = Array.isArray(selectedColumns) ? selectedColumns : [];
+    const recList = (recommendedByType[type] || []);
+  const arraysEqual = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  const matchesARecommendation = recList.some(r => arraysEqual(sel, r.cols));
+  const needsDefault = sel.length === 0 || !canRenderSelected || !matchesARecommendation;
+    if (needsDefault && recList.length > 0) {
+      const target = recList[0].cols;
+      const same = sel.length === target.length && sel.every((c, i) => c === target[i]);
+      if (!same) {
+        if (typeof onSelectColumns === 'function') {
+          onSelectColumns(target);
+        } else if (onToggleColumn) {
+          // Fallback: try to apply target by toggling
+          sel.forEach(c => { if (!target.includes(c)) onToggleColumn(c); });
+          target.forEach(c => { if (!sel.includes(c)) onToggleColumn(c); });
+        }
+      }
+    }
+  }, [type, recommendedByType, selectedColumns, canRenderSelected, onSelectColumns, onToggleColumn]);
+
+  const applyPairSelection = (cols, chartType) => {
+    if (chartType && typeof onTypeChange === 'function') {
+      onTypeChange(chartType);
+    }
     if (typeof onSelectColumns === 'function') {
       onSelectColumns(cols);
       return;
@@ -497,29 +540,16 @@ const DataVisualizer = ({
   return (
     <div className="space-y-6">
       <VisualizationTypeSelector type={type} onTypeChange={onTypeChange} />
-      <ColumnSelector 
-        columns={columns} 
-        columnTypes={columnTypes}
-        selectedColumns={selectedColumns} 
-        onToggleColumn={onToggleColumn}
-        data={data}
-      />
-
-      {recommendedPairs.length > 0 && (
+      {(recommendedByType[type] && recommendedByType[type].length > 0) && (
         <div className={`border rounded-xl p-3 ${hasSelection && !canRenderSelected ? 'bg-amber-500/10 border-amber-400/20' : 'bg-slate-800/40 border-white/10'}`}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs text-gray-400">Recommended pairs</div>
-            {hasSelection && !canRenderSelected && (
-              <div className="text-xs text-amber-400">Current selection can’t form a {type} chart</div>
-            )}
-          </div>
+          <div className="text-xs text-gray-400 mb-2">Recommended pairs for {type}</div>
           <div className="flex flex-wrap gap-2">
-            {recommendedPairs.map((p, i) => (
+            {recommendedByType[type].map((p, i) => (
               <button
-                key={i}
+                key={`${type}-${i}`}
                 onClick={() => applyPairSelection(p.cols)}
                 className="text-xs px-3 py-1.5 rounded-lg border border-white/10 bg-slate-800/60 hover:bg-slate-700/60 text-gray-200"
-                title={`Use ${p.label}`}
+                title={`${type}: ${p.label}`}
               >
                 {p.label}
               </button>
