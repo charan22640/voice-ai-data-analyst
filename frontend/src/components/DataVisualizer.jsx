@@ -114,7 +114,7 @@ const ColumnSelector = ({ columns, columnTypes = {}, selectedColumns = [], onTog
   );
 };
 
-const Chart = ({ data, type, columns }) => {
+const Chart = ({ data, type, columns, columnTypes = {} }) => {
   if (!data || !columns || columns.length === 0) {
     return (
       <div className="text-center py-12 text-gray-400">
@@ -124,28 +124,120 @@ const Chart = ({ data, type, columns }) => {
     );
   }
 
-  const chartData = useMemo(() => {
-    if (type === 'pie' && columns.length === 2) {
-      // For pie chart, we need exactly 2 columns: one for categories and one for values
-      const categoryColumn = columns[0];
-      const valueColumn = columns[1];
-      
-      // Aggregate data by category
-      const aggregated = data.reduce((acc, item) => {
-        const key = item[categoryColumn];
-        const value = Number(item[valueColumn]) || 0;
-        if (!acc[key]) {
-          acc[key] = { name: key, value: 0 };
-        }
-        acc[key].value += value;
-        return acc;
-      }, {});
+  // Helper to compute pie data and labels in an order-agnostic way
+  const pieComputed = useMemo(() => {
+    if (type !== 'pie' || !Array.isArray(data) || data.length === 0 || !Array.isArray(columns) || columns.length === 0) {
+      return { data: [], category: columns?.[0] || 'Category', value: columns?.[1] || 'Value' };
+    }
 
-      // Convert to array and sort by value
-      return Object.values(aggregated).sort((a, b) => b.value - a.value);
+    const cols = columns.slice(0, 2); // we only consider up to two columns for pie
+    const isNumericCol = (col) => {
+      if (!col) return false;
+      if (columnTypes[col] === 'number') return true;
+      // Fallback: test a small sample
+      const sample = data.slice(0, 50).map(r => Number(r[col])).filter(v => !isNaN(v) && isFinite(v));
+      return sample.length >= Math.min(5, data.length);
+    };
+
+    // Decide category and value roles
+    let categoryCol = cols.find(c => !isNumericCol(c));
+    let valueCol = cols.find(c => c !== categoryCol && isNumericCol(c));
+
+    // If both numeric or both non-numeric, pick sensible defaults
+    if (!categoryCol && cols.length > 0) {
+      // Both numeric: use first as binned category, second as value if exists
+      categoryCol = cols[0];
+      valueCol = cols[1];
+    }
+    if (!valueCol) {
+      // No numeric value provided, we'll count occurrences per category
+      valueCol = null;
+    }
+
+    const aggregated = new Map();
+
+    const toBinLabel = (values, bins = 5) => {
+      const nums = values.filter(v => typeof v === 'number' && isFinite(v));
+      if (nums.length === 0) return () => 'N/A';
+      const min = Math.min(...nums);
+      const max = Math.max(...nums);
+      if (min === max) return () => `${min}`;
+      const step = (max - min) / bins;
+      return (v) => {
+        if (!isFinite(v)) return 'N/A';
+        const idx = Math.min(bins - 1, Math.floor((v - min) / step));
+        const start = min + idx * step;
+        const end = idx === bins - 1 ? max : start + step;
+        return `${start.toFixed(2)} – ${end.toFixed(2)}`;
+      };
+    };
+
+    const catIsNumeric = isNumericCol(categoryCol);
+    const catValues = data.map(r => Number(r[categoryCol]));
+    const binFn = catIsNumeric ? toBinLabel(catValues, 6) : null;
+
+    for (const row of data) {
+      const rawKey = catIsNumeric ? Number(row[categoryCol]) : row[categoryCol];
+      const key = catIsNumeric ? binFn(Number(rawKey)) : (rawKey ?? 'N/A');
+      if (!aggregated.has(key)) aggregated.set(key, { name: key, value: 0 });
+      if (valueCol) {
+        const v = Number(row[valueCol]);
+        aggregated.get(key).value += isFinite(v) ? v : 0;
+      } else {
+        aggregated.get(key).value += 1; // count occurrences
+      }
+    }
+
+    let arr = Array.from(aggregated.values()).sort((a, b) => b.value - a.value);
+    // Limit to top 8, group others
+    if (arr.length > 8) {
+      const top = arr.slice(0, 8);
+      const othersValue = arr.slice(8).reduce((sum, r) => sum + r.value, 0);
+      top.push({ name: 'Others', value: othersValue });
+      arr = top;
+    }
+
+    const categoryLabel = catIsNumeric ? `${categoryCol} (binned)` : categoryCol;
+    const valueLabel = valueCol || 'count';
+    return { data: arr, category: categoryLabel, value: valueLabel };
+  }, [type, data, columns, columnTypes]);
+
+  const chartData = useMemo(() => {
+    // Pie: aggregate category->value (order-agnostic, supports 1 or 2 columns)
+    if (type === 'pie') {
+      return pieComputed.data;
+    }
+
+    // Bar with category->numeric: aggregate top 10 categories
+    if (type === 'bar' && columns.length >= 2 && columnTypes[columns[0]] !== 'number') {
+      const categoryCol = columns[0];
+      const numericCols = columns.slice(1).filter(c => columnTypes[c] === 'number');
+      if (numericCols.length > 0) {
+        const aggMap = new Map();
+        for (const row of data) {
+          const key = row[categoryCol];
+          if (!aggMap.has(key)) aggMap.set(key, { [categoryCol]: key });
+          for (const numCol of numericCols) {
+            const prev = aggMap.get(key)[numCol] || 0;
+            const val = Number(row[numCol]);
+            aggMap.get(key)[numCol] = prev + (isFinite(val) ? val : 0);
+          }
+        }
+        // Top 10 by first numeric
+        const firstNum = numericCols[0];
+        const arr = Array.from(aggMap.values()).sort((a, b) => (b[firstNum] || 0) - (a[firstNum] || 0));
+        return arr.slice(0, 10);
+      }
+    }
+
+    // Bar with single numeric: create index for X axis (histogram-like simple display)
+    if (type === 'bar' && columns.length === 1 && columnTypes[columns[0]] === 'number') {
+      const col = columns[0];
+      // Take first 50 rows to avoid overcrowding
+      return data.slice(0, 50).map((row, i) => ({ index: i + 1, [col]: Number(row[col]) }));
     }
     return data;
-  }, [data, columns, type]);
+  }, [data, columns, type, columnTypes, pieComputed]);
 
   const renderChart = () => {
     if (!data || !columns || columns.length === 0) {
@@ -159,11 +251,16 @@ const Chart = ({ data, type, columns }) => {
 
     switch (type) {
       case 'bar':
+        // Determine X axis key and bar series
+        const isSingleNumeric = columns.length === 1 && columnTypes[columns[0]] === 'number';
+        const xKey = isSingleNumeric ? 'index' : columns[0];
+        const series = isSingleNumeric ? [columns[0]] : columns.slice(1);
         return (
+          <ResponsiveContainer width="100%" height={400}>
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
             <XAxis 
-              dataKey={columns[0]} 
+              dataKey={xKey} 
               stroke="#9CA3AF"
               tick={{ fill: '#9CA3AF' }}
               tickLine={{ stroke: '#4B5563' }}
@@ -175,7 +272,7 @@ const Chart = ({ data, type, columns }) => {
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend wrapperStyle={{ color: '#9CA3AF' }} />
-            {columns.slice(1).map((column, index) => (
+            {series.map((column, index) => (
               <Bar 
                 key={column} 
                 dataKey={column} 
@@ -185,15 +282,17 @@ const Chart = ({ data, type, columns }) => {
               />
             ))}
           </BarChart>
+          </ResponsiveContainer>
         );
 
 
 
       case 'scatter':
-        if (columns.length < 2) {
+  if (columns.length < 2) {
           return <div className="text-gray-400">Select at least two numeric columns for a scatter plot</div>;
         }
         return (
+          <ResponsiveContainer width="100%" height={400}>
           <ScatterChart>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
             <XAxis 
@@ -218,57 +317,29 @@ const Chart = ({ data, type, columns }) => {
               fill={COLORS[0]}
             />
           </ScatterChart>
+          </ResponsiveContainer>
         );
 
-      case 'pie':
-        if (columns.length !== 2) {
-          return (
-            <div className="text-center py-12 text-gray-400">
-              <p className="text-lg font-medium mb-4">Pie Chart Requirements:</p>
-              <p className="mb-2">Please select exactly two columns:</p>
-              <div className="inline-block text-left">
-                <p className="text-sm mb-2">1. A category column for segments (e.g., day, condition)</p>
-                <p className="text-sm">2. A numeric column for values (e.g., temperature, count)</p>
-              </div>
-              {columns.length > 2 && (
-                <p className="mt-4 text-amber-400">
-                  Too many columns selected. Please select only two columns.
-                </p>
-              )}
-            </div>
-          );
-        }
-
-        // Validate that the second column is numeric
-        const hasValidNumericData = data.some(item => !isNaN(Number(item[columns[1]])));
-        if (!hasValidNumericData) {
-          return (
-            <div className="text-center py-12 text-red-400">
-              <p className="font-medium">Invalid Column Selection</p>
-              <p className="text-sm mt-2">The second column must contain numeric values</p>
-              <p className="text-sm mt-1">Current selection: {columns[1]}</p>
-            </div>
-          );
-        }
-
+    case 'pie':
         return (
           <div className="bg-slate-800/30 p-6 rounded-lg">
             <h3 className="text-center text-gray-300 mb-4 font-medium">
-              {columns[1]} by {columns[0]}
+        {pieComputed.value} by {pieComputed.category}
             </h3>
-            <ResponsiveContainer width="100%" height={400}>
-              <PieChart>
+            <ResponsiveContainer width="100%" height={360}>
+              <PieChart margin={{ top: 12, right: 16, bottom: 16, left: 16 }}>
                 <Pie
-                  data={chartData}
+          data={chartData}
                   nameKey="name"
                   dataKey="value"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={160}
-                  label={({ name, value, percent }) => 
+                  cx="48%"
+                  cy="46%"
+                  outerRadius={120}
+                  label={chartData.length <= 12 ? (({ name, value, percent }) => 
                     `${name}: ${value.toLocaleString()} (${(percent * 100).toFixed(1)}%)`
-                  }
-                  labelLine={true}
+                  ) : false}
+                  labelLine={chartData.length <= 12}
+                  paddingAngle={2}
                 >
                   {chartData.map((entry, index) => (
                     <Cell 
@@ -304,9 +375,7 @@ const Chart = ({ data, type, columns }) => {
 
   return (
     <ErrorBoundary>
-      <ResponsiveContainer width="100%" height={400}>
-        {renderChart()}
-      </ResponsiveContainer>
+      {renderChart()}
     </ErrorBoundary>
   );
 };
@@ -322,8 +391,109 @@ const DataVisualizer = ({
   selectedColumns = [], 
   type = 'bar', 
   onTypeChange, 
-  onToggleColumn 
+  onToggleColumn,
+  onSelectColumns
 }) => {
+  const isNumeric = (col) => columnTypes[col] === 'number';
+  const canRenderSelected = React.useMemo(() => {
+    const sel = Array.isArray(selectedColumns) ? selectedColumns : [];
+    if (type === 'bar') {
+      if (sel.length === 1) return isNumeric(sel[0]);
+      if (sel.length >= 2) return (columnTypes[sel[0]] !== 'number') && sel.slice(1).some(isNumeric);
+      return false;
+    }
+    if (type === 'scatter') {
+      return sel.length >= 2 && isNumeric(sel[0]) && isNumeric(sel[1]);
+    }
+    if (type === 'pie') {
+      // Pie now supports 1 or 2 columns in any order
+      return sel.length >= 1;
+    }
+    return false;
+  }, [selectedColumns, type, columnTypes]);
+  // Infer two default charts to always show something meaningful
+  const defaultCharts = useMemo(() => {
+    const charts = [];
+    const hasCatNum = categoricalColumns.length > 0 && numericColumns.length > 0;
+    const hasTwoNums = numericColumns.length > 1;
+
+    // Chart 1: Bar (category -> numeric) or single numeric index chart
+    if (hasCatNum) {
+      charts.push({ type: 'bar', columns: [categoricalColumns[0], numericColumns[0]] });
+    } else if (numericColumns.length === 1) {
+      charts.push({ type: 'bar', columns: [numericColumns[0]] });
+    }
+
+    // Chart 2: Scatter (two numerics) or Pie (category -> numeric) as fallback
+    if (hasTwoNums) {
+      charts.push({ type: 'scatter', columns: [numericColumns[0], numericColumns[1]] });
+    } else if (hasCatNum) {
+      charts.push({ type: 'pie', columns: [categoricalColumns[0], numericColumns[0]] });
+    }
+
+    // Ensure at least one chart exists
+    if (charts.length === 0 && columns.length > 0) {
+      charts.push({ type: 'bar', columns: [columns[0]] });
+    }
+
+    // Limit to two charts
+    return charts.slice(0, 2);
+  }, [categoricalColumns, numericColumns, columns]);
+
+  const hasSelection = Array.isArray(selectedColumns) && selectedColumns.length > 0;
+
+  // Build recommended pairs for the current chart type
+  const recommendedPairs = useMemo(() => {
+    const pairs = [];
+    if (type === 'bar') {
+      // category x numeric pairs
+      for (const c of categoricalColumns) {
+        for (const n of numericColumns) {
+          pairs.push({ label: `${c} × ${n}`, cols: [c, n] });
+        }
+      }
+      // fallback: single numeric index bar
+      if (pairs.length === 0) {
+        for (const n of numericColumns) pairs.push({ label: `${n}`, cols: [n] });
+      }
+    } else if (type === 'scatter') {
+      // numeric vs numeric pairs
+      for (let i = 0; i < numericColumns.length; i++) {
+        for (let j = i + 1; j < numericColumns.length; j++) {
+          const a = numericColumns[i];
+          const b = numericColumns[j];
+          pairs.push({ label: `${a} vs ${b}`, cols: [a, b] });
+        }
+      }
+    } else if (type === 'pie') {
+      // category only, and category + numeric
+      for (const c of categoricalColumns) {
+        pairs.push({ label: `${c} (count)`, cols: [c] });
+        for (const n of numericColumns) {
+          pairs.push({ label: `${c} → sum(${n})`, cols: [c, n] });
+        }
+      }
+      // fallback: numeric-only count (binned)
+      if (pairs.length === 0) {
+        for (const n of numericColumns) pairs.push({ label: `${n} (binned)`, cols: [n] });
+      }
+    }
+    return pairs.slice(0, 16); // limit to 16 chips to avoid clutter
+  }, [type, categoricalColumns, numericColumns]);
+
+  const applyPairSelection = (cols) => {
+    if (typeof onSelectColumns === 'function') {
+      onSelectColumns(cols);
+      return;
+    }
+    // fallback: toggle to match desired set
+    const current = new Set(selectedColumns);
+    // remove extras
+    current.forEach(col => { if (!cols.includes(col)) onToggleColumn && onToggleColumn(col); });
+    // add missing
+    cols.forEach(col => { if (!current.has(col)) onToggleColumn && onToggleColumn(col); });
+  };
+
   return (
     <div className="space-y-6">
       <VisualizationTypeSelector type={type} onTypeChange={onTypeChange} />
@@ -334,11 +504,52 @@ const DataVisualizer = ({
         onToggleColumn={onToggleColumn}
         data={data}
       />
-      <Chart 
-        data={data} 
-        type={type} 
-        columns={selectedColumns}
-      />
+
+      {recommendedPairs.length > 0 && (
+        <div className={`border rounded-xl p-3 ${hasSelection && !canRenderSelected ? 'bg-amber-500/10 border-amber-400/20' : 'bg-slate-800/40 border-white/10'}`}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs text-gray-400">Recommended pairs</div>
+            {hasSelection && !canRenderSelected && (
+              <div className="text-xs text-amber-400">Current selection can’t form a {type} chart</div>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {recommendedPairs.map((p, i) => (
+              <button
+                key={i}
+                onClick={() => applyPairSelection(p.cols)}
+                className="text-xs px-3 py-1.5 rounded-lg border border-white/10 bg-slate-800/60 hover:bg-slate-700/60 text-gray-200"
+                title={`Use ${p.label}`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {hasSelection && canRenderSelected ? (
+        <Chart 
+          data={data} 
+          type={type} 
+          columns={selectedColumns}
+          columnTypes={columnTypes}
+        />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {defaultCharts.map((cfg, idx) => (
+            <div key={idx} className="bg-slate-800/30 p-4 rounded-lg">
+              <div className="text-sm text-gray-400 mb-3 capitalize">{cfg.type} preview</div>
+              <Chart 
+                data={data}
+                type={cfg.type}
+                columns={cfg.columns}
+                columnTypes={columnTypes}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

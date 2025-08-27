@@ -525,6 +525,7 @@ const DataDashboard = ({ onDatasetLoaded }) => {
                   type={visualizationType}
                   onTypeChange={setVisualizationType}
                   onToggleColumn={toggleColumnSelection}
+                  onSelectColumns={(cols) => setSelectedColumns(cols)}
                 />
               </ErrorBoundary>
             )}
