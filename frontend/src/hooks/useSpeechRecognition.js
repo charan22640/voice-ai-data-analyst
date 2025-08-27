@@ -72,8 +72,14 @@ export const useSpeechRecognition = () => {
   }
 
   const stopListening = () => {
-    if (recognitionRef.current && isListening) {
-      recognitionRef.current.stop()
+    if (recognitionRef.current) {
+      // Immediately reflect UI state; onend will fire shortly after
+      setIsListening(false)
+      try {
+        recognitionRef.current.stop()
+      } catch (e) {
+        // no-op: calling stop when not started can throw in some browsers
+      }
     }
   }
 

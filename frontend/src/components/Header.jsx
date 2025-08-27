@@ -1,6 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Activity, MessageSquare, Database, Wifi, WifiOff, AlertTriangle } from 'lucide-react'
+import { Activity, MessageSquare, Database, Wifi, WifiOff, AlertTriangle, BarChart3 } from 'lucide-react'
 
 const Header = ({ currentView, setCurrentView, connectionStatus }) => {
   const getStatusIcon = () => {
@@ -42,7 +42,7 @@ const Header = ({ currentView, setCurrentView, connectionStatus }) => {
           >
             <div className="relative">
               <div className="w-10 h-10 bg-gradient-to-br from-primary to-blue-400 rounded-xl flex items-center justify-center">
-                <Activity className="w-6 h-6 text-white" />
+                <BarChart3 className="w-6 h-6 text-white" />
               </div>
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-pulse"></div>
             </div>

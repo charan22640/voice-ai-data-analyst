@@ -21,7 +21,7 @@ const AssistantUI = ({ currentDataset }) => {
   ])
   const [inputText, setInputText] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [assistantStatus, setAssistantStatus] = useState('ready') // ready, listening, processing, speaking
+  const [assistantStatus, setAssistantStatus] = useState('ready') // ready, listening, processing, speaking, paused
   const [isTTSEnabled, setIsTTSEnabled] = useState(true)
   const [isMuted, setIsMuted] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
@@ -81,23 +81,29 @@ const AssistantUI = ({ currentDataset }) => {
   }, [transcript, isLoading])
 
   // Update assistant status
+  // Priority: processing > listening > paused > speaking > ready
   useEffect(() => {
-    if (isListening) {
-      setAssistantStatus('listening')
-    } else if (isLoading) {
+    if (isLoading) {
       setAssistantStatus('processing')
+    } else if (isListening) {
+      setAssistantStatus('listening')
+    } else if (isSpeaking && isPaused) {
+      setAssistantStatus('paused')
     } else if (isSpeaking) {
       setAssistantStatus('speaking')
     } else {
       setAssistantStatus('ready')
     }
-  }, [isListening, isLoading, isSpeaking])
+  }, [isListening, isLoading, isSpeaking, isPaused])
 
   const sendMessage = async () => {
     if (!inputText.trim() || isLoading) return
 
-    // Always stop any ongoing speech before sending a new message
+    // Always stop any ongoing speech/listening before sending a new message
     stopSpeaking()
+    if (isListening) {
+      stopListening()
+    }
     setIsPaused(false)
 
     const userMessage = {
@@ -208,7 +214,7 @@ const AssistantUI = ({ currentDataset }) => {
             assistantStatus === 'processing' ? 'border-yellow-400 text-yellow-400' :
             'border-blue-400 text-blue-400'
           }`}
-          animate={assistantStatus !== 'ready' ? { 
+          animate={assistantStatus !== 'ready' && assistantStatus !== 'paused' ? { 
             scale: [1, 1.1, 1],
             borderColor: assistantStatus === 'listening' ? ['#f87171', '#dc2626', '#f87171'] :
                         assistantStatus === 'processing' ? ['#fbbf24', '#d97706', '#fbbf24'] :
@@ -223,7 +229,7 @@ const AssistantUI = ({ currentDataset }) => {
               assistantStatus === 'processing' ? 'bg-yellow-400' :
               'bg-blue-400'
             }`}
-            animate={assistantStatus !== 'ready' ? { scale: [1, 1.5, 1] } : {}}
+            animate={assistantStatus !== 'ready' && assistantStatus !== 'paused' ? { scale: [1, 1.5, 1] } : {}}
             transition={{ duration: 1, repeat: Infinity }}
           />
         </motion.div>
@@ -232,6 +238,7 @@ const AssistantUI = ({ currentDataset }) => {
           {assistantStatus === 'listening' && 'Listening...'}
           {assistantStatus === 'processing' && 'Processing...'}
           {assistantStatus === 'speaking' && 'Speaking...'}
+          {assistantStatus === 'paused' && 'Paused'}
         </span>
       </motion.div>
 

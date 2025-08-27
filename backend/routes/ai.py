@@ -100,11 +100,12 @@ def chat():
         if context:
             context = f"Conversation so far (most recent last):\n{context}\n---\n"
         
-        # Add dataset context if available
+        # Add dataset context only if the client indicates a dataset is loaded.
+        # This avoids leaking a previously uploaded dataset from server memory
+        # into new browser sessions.
         try:
-            data_service = _shared_ds
-            if data_service.current_data is not None:
-                dataset_context = data_service.get_ai_dataset_context()
+            if data_context and data_context.get('success'):
+                dataset_context = _shared_ds.get_ai_dataset_context()
                 context += f"\nCurrent Dataset Context:\n{dataset_context}\n---\n"
         except Exception:
             pass  # Continue without dataset context if there's an error
