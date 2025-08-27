@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mic, MicOff, Send, Volume2, VolumeX, Loader2 } from 'lucide-react'
+import { Mic, MicOff, Send, Volume2, VolumeX, Loader2, Pause, Play, StopCircle } from 'lucide-react'
 import VoiceButton from './VoiceButton'
 import ChatHistory from './ChatHistory'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
@@ -23,6 +23,8 @@ const AssistantUI = ({ currentDataset }) => {
   const [isLoading, setIsLoading] = useState(false)
   const [assistantStatus, setAssistantStatus] = useState('ready') // ready, listening, processing, speaking
   const [isTTSEnabled, setIsTTSEnabled] = useState(true)
+  const [isMuted, setIsMuted] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
   
   const chatContainerRef = useRef(null)
   const inputRef = useRef(null)
@@ -35,7 +37,7 @@ const AssistantUI = ({ currentDataset }) => {
     resetTranscript 
   } = useSpeechRecognition()
 
-  const { speak, isSpeaking, stopSpeaking } = useTextToSpeech()
+  const { speak, isSpeaking, stopSpeaking, pauseSpeaking, resumeSpeaking } = useTextToSpeech()
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -94,6 +96,10 @@ const AssistantUI = ({ currentDataset }) => {
   const sendMessage = async () => {
     if (!inputText.trim() || isLoading) return
 
+    // Always stop any ongoing speech before sending a new message
+    stopSpeaking()
+    setIsPaused(false)
+
     const userMessage = {
       id: genId(),
       type: 'user',
@@ -131,7 +137,8 @@ const AssistantUI = ({ currentDataset }) => {
         setMessages(prev => [...prev, assistantMessage])
 
         // Text-to-speech for assistant response
-        if (isTTSEnabled && !isSpeaking) {
+        if (isTTSEnabled && !isMuted) {
+          stopSpeaking() // Ensure no overlap
           speak(data.response)
         }
       } else {
@@ -288,13 +295,49 @@ const AssistantUI = ({ currentDataset }) => {
             )}
           </motion.button>
 
+          {/* TTS Controls */}
           <button
-            onClick={() => setIsTTSEnabled(!isTTSEnabled)}
-            className={`p-3 rounded-lg transition-all ${
-              isTTSEnabled ? 'text-primary' : 'text-gray-400'
-            }`}
+            onClick={() => {
+              setIsMuted(!isMuted)
+              stopSpeaking()
+            }}
+            className={`p-3 rounded-lg transition-all ${isMuted ? 'text-gray-400' : 'text-primary'}`}
+            title={isMuted ? 'Unmute' : 'Mute'}
           >
-            {isTTSEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+          </button>
+          <button
+            onClick={() => {
+              pauseSpeaking()
+              setIsPaused(true)
+            }}
+            className={`p-3 rounded-lg transition-all ${isSpeaking && !isPaused ? 'text-primary' : 'text-gray-400'}`}
+            disabled={!isSpeaking || isPaused}
+            title="Pause"
+          >
+            <Pause className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => {
+              resumeSpeaking()
+              setIsPaused(false)
+            }}
+            className={`p-3 rounded-lg transition-all ${isSpeaking && isPaused ? 'text-primary' : 'text-gray-400'}`}
+            disabled={!isSpeaking || !isPaused}
+            title="Resume"
+          >
+            <Play className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => {
+              stopSpeaking()
+              setIsPaused(false)
+            }}
+            className="p-3 rounded-lg transition-all text-gray-400"
+            disabled={!isSpeaking}
+            title="Stop"
+          >
+            <StopCircle className="w-5 h-5" />
           </button>
         </div>
 

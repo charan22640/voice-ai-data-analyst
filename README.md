@@ -1,3 +1,117 @@
+# Nova – Voice‑Activated AI Data Analyst
+
+Nova is a full‑stack AI data assistant that lets you upload CSV/Excel files, ask questions in natural language (voice or text), and receive insights, summaries, and visualizations. The project demonstrates end‑to‑end skills across modern React UI, Python/Flask analytics, and LLM integration.
+
+## Highlights
+- Voice chat with STT/TTS, conversational memory
+- Natural‑language analysis of structured data (CSV/XLS/XLSX)
+- Automated stats, correlations, distributions, outlier scans, and quality reports
+- On‑the‑fly charts (Matplotlib/Seaborn/Plotly) served from the backend
+- Gemini API integration with robust fallbacks and response cleaning
+- Modern UI (Tailwind + Framer Motion), dark theme, responsive
+
+## Architecture
+- Frontend: React 18 + Vite, Tailwind CSS, Framer Motion
+- Backend: Flask (Python 3.11+), Pandas/NumPy, Plotly/Matplotlib/Seaborn
+- AI: Google Gemini API (configurable), server‑side prompt assembly and safety guards
+- TTS: Server‑side generation (gTTS pipeline) with frontend playback
+- Packaging: Dockerfiles (frontend/backend) and docker‑compose
+
+Directory layout (simplified)
+```
+backend/
+   app.py                 # Flask app + CORS + blueprint wiring
+   routes/                # /api/ai/* and /api/data/* endpoints
+   services/              # Data, Gemini, and TTS services
+   static/                # Generated charts/audio + uploaded files
+frontend/
+   src/                   # React app (Assistant, Dashboard, etc.)
+   public/sample_datasets # Built‑in demo CSVs
+```
+
+## Quick start (local dev)
+
+Prereqs
+- Node.js 18+
+- Python 3.11+
+- A Gemini API key (https://ai.google.dev)
+
+Backend (Flask)
+1) In `backend/` create and activate a venv
+2) `pip install -r requirements.txt`
+3) Copy `.env.example` to `.env` and set `GEMINI_API_KEY`
+4) Run `python app.py` (default http://localhost:5000)
+
+Frontend (React)
+1) In `frontend/` run `npm install`
+2) Start dev server: `npm run dev` (default http://localhost:3000)
+
+Optional: set `VITE_API_URL=http://localhost:5000` in `frontend/.env` if your backend runs on a non‑default host/port.
+
+## Docker
+Use `docker-compose up --build` from the repo root. Ensure `backend/.env` contains `GEMINI_API_KEY` before building.
+
+## Using Nova
+1) Upload a dataset or click a sample dataset (Sales/Employee/Web Traffic)
+2) Browse the Overview, Visualizations, Statistics, Correlations, and Quality tabs
+3) Ask questions like:
+    - What is the average revenue by region?
+    - Show correlation between price and quantity
+    - Detect anomalies in sales
+4) Use the Assistant to chat (voice or text). Enable TTS for spoken replies.
+
+## API overview
+
+AI
+- `POST /api/ai/chat` – conversational responses using Gemini
+- `POST /api/ai/process` – single‑shot prompt + optional context
+- `POST /api/ai/tts` – generate speech from text
+- `GET  /api/ai/status` – model + key status
+
+Data
+- `POST /api/data/upload` – upload CSV/XLS/XLSX and trigger profiling
+- `POST /api/data/query` – natural‑language analysis over the loaded dataset
+- `GET  /api/data/info` – dataset info (shape, columns, types)
+- `GET  /api/data/analytics-dashboard` – comprehensive metrics + charts
+- `GET  /api/data/quality` – data quality metrics
+- `GET  /api/data/summary` – summary stats
+
+## Configuration
+
+Backend (`backend/.env`)
+```
+GEMINI_API_KEY=your_key
+FLASK_DEBUG=False
+PORT=5000
+CORS_ORIGINS=http://localhost:3000
+```
+
+Frontend (`frontend/.env`)
+```
+VITE_API_URL=http://localhost:5000
+```
+
+## Troubleshooting
+
+- 500 Chat error after upload: fixed by adding public helpers to `DataService` (get_data_profile, get_column_summaries, suggest_analyses) and reusing a shared `DataService` instance across routes.
+- Assistant answer cuts off after “1.”: resolved by removing `"**"` from Gemini `stopSequences` (bold text no longer truncates).
+- Sample datasets not loading: frontend now passes the full upload response to the dashboard.
+- Duplicate React keys warning: message IDs now use `crypto.randomUUID()` fallback to ensure uniqueness.
+- Missing Python libs: ensure the venv is active and `pip install -r backend/requirements.txt` completed (seaborn, scipy, scikit‑learn, etc.).
+- CORS: set `CORS_ORIGINS` (comma‑separated) or keep defaults for localhost ports.
+
+## Security notes
+- Keep `GEMINI_API_KEY` server‑side (backend `.env`). Do not expose it to the browser.
+- Uploaded files are stored under `backend/static/` for processing; clear when not needed.
+
+## License
+MIT. See LICENSE if present.
+
+## Acknowledgements
+- Google AI (Gemini)
+- Flask and React communities
+- Tailwind, Plotly, Seaborn, Matplotlib
+
 # 🚀 Nova - Voice-Activated AI Data Assistant
 
 <div align="center">

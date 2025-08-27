@@ -1,0 +1,21 @@
+Employee_ID,Name,Department,Age,Salary,Years_Experience,Performance_Rating,Location,Education,Hire_Date
+E001,Alice Johnson,Engineering,28,75000,4,4.2,New York,Bachelor,2020-03-15
+E002,Bob Smith,Marketing,32,65000,6,3.8,Los Angeles,Master,2018-07-22
+E003,Carol Brown,HR,35,70000,8,4.5,Chicago,Bachelor,2016-01-10
+E004,David Wilson,Finance,29,72000,5,4.0,Houston,Master,2019-09-08
+E005,Emma Davis,Engineering,26,68000,3,4.3,Seattle,Bachelor,2021-05-20
+E006,Frank Miller,Sales,31,62000,7,3.9,Boston,Bachelor,2017-11-12
+E007,Grace Lee,Marketing,27,58000,2,4.1,Austin,Master,2022-02-28
+E008,Henry Garcia,IT,33,76000,9,4.4,San Francisco,Bachelor,2015-06-05
+E009,Ivy Martinez,Finance,30,69000,6,4.0,Denver,Master,2018-04-17
+E010,Jack Robinson,Sales,28,61000,4,3.7,Miami,Bachelor,2020-08-11
+E011,Karen White,HR,34,73000,10,4.6,Portland,Master,2014-12-03
+E012,Liam Anderson,Engineering,25,71000,2,4.2,Phoenix,Bachelor,2022-10-15
+E013,Mia Taylor,Marketing,29,63000,5,3.8,Atlanta,Bachelor,2019-01-25
+E014,Noah Thomas,IT,31,74000,7,4.3,Dallas,Master,2017-03-18
+E015,Olivia Harris,Finance,27,66000,3,4.1,Las Vegas,Bachelor,2021-07-09
+E016,Paul Clark,Sales,35,64000,8,3.9,Detroit,Bachelor,2016-09-14
+E017,Quinn Lewis,HR,26,59000,2,4.0,Minneapolis,Master,2022-01-30
+E018,Ryan Walker,Engineering,32,78000,9,4.5,San Diego,Bachelor,2015-04-22
+E019,Sophie Hall,Marketing,28,60000,4,3.6,Cleveland,Bachelor,2020-06-08
+E020,Tyler Young,IT,30,75000,6,4.2,Orlando,Master,2018-11-19
