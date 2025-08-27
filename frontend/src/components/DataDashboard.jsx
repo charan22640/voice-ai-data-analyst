@@ -4,11 +4,13 @@ import DataVisualizer from './DataVisualizer'
 import DataQualityView from './DataQualityView'
 import DataOverview from './DataOverview'
 import ErrorBoundary from './ErrorBoundary'
+import StatisticalInsights from './StatisticalInsights'
+import CorrelationMatrix from './CorrelationMatrix'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Upload, FileText, BarChart3, Search, X, Loader2, 
-  TrendingUp, Database, PieChart, LineChart, 
-  ScatterChart, CheckCircle, Table 
+  TrendingUp, Database, Activity, Network,
+  CheckCircle, AlertCircle, Table 
 } from 'lucide-react'
 
 const QueryInterface = ({ query, setQuery, analyzeQuery, isAnalyzing }) => (
@@ -95,56 +97,73 @@ const DatasetStats = ({ datasetInfo }) => (
   </div>
 );
 
-const DatasetHeader = ({ activeTab, setActiveTab }) => (
-  <div className="mb-6">
-    <div className="flex space-x-2 border-b border-gray-700">
-      <button
-        onClick={() => setActiveTab('overview')}
-        className={`px-4 py-2 flex items-center space-x-2 ${
-          activeTab === 'overview' 
-            ? 'text-primary border-b-2 border-primary' 
-            : 'text-gray-400 hover:text-gray-300'
-        }`}
-      >
-        <FileText className="w-4 h-4" />
-        <span>Overview</span>
-      </button>
-      <button
-        onClick={() => setActiveTab('visualizations')}
-        className={`px-4 py-2 flex items-center space-x-2 ${
-          activeTab === 'visualizations'
-            ? 'text-primary border-b-2 border-primary'
-            : 'text-gray-400 hover:text-gray-300'
-        }`}
-      >
-        <BarChart3 className="w-4 h-4" />
-        <span>Visualizations</span>
-      </button>
-      <button
-        onClick={() => setActiveTab('quality')}
-        className={`px-4 py-2 flex items-center space-x-2 ${
-          activeTab === 'quality'
-            ? 'text-primary border-b-2 border-primary'
-            : 'text-gray-400 hover:text-gray-300'
-        }`}
-      >
-        <CheckCircle className="w-4 h-4" />
-        <span>Data Quality</span>
-      </button>
-      <button
-        onClick={() => setActiveTab('explore')}
-        className={`px-4 py-2 flex items-center space-x-2 ${
-          activeTab === 'explore'
-            ? 'text-primary border-b-2 border-primary'
-            : 'text-gray-400 hover:text-gray-300'
-        }`}
-      >
-        <Search className="w-4 h-4" />
-        <span>Explore</span>
-      </button>
+const DatasetHeader = ({ activeTab, setActiveTab, datasetInfo }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+  >
+    <div className="flex justify-between items-center mb-6 overflow-x-auto glass rounded-xl p-4">
+      <div className="flex space-x-4">
+        <button
+          onClick={() => { setActiveTab('overview'); }}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
+            activeTab === 'overview'
+              ? 'bg-primary text-white'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <Database className="w-4 h-4" />
+          <span>Overview</span>
+        </button>
+        <button
+          onClick={() => { setActiveTab('visualizations'); }}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
+            activeTab === 'visualizations'
+              ? 'bg-primary text-white'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          <span>Visualizations</span>
+        </button>
+        <button
+          onClick={() => { setActiveTab('statistics'); }}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
+            activeTab === 'statistics'
+              ? 'bg-primary text-white'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <TrendingUp className="w-4 h-4" />
+          <span>Statistics</span>
+        </button>
+        <button
+          onClick={() => { setActiveTab('correlations'); }}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
+            activeTab === 'correlations'
+              ? 'bg-primary text-white'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <Network className="w-4 h-4" />
+          <span>Correlations</span>
+        </button>
+        <button
+          onClick={() => { setActiveTab('quality'); }}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
+            activeTab === 'quality'
+              ? 'bg-primary text-white'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <Activity className="w-4 h-4" />
+          <span>Data Quality</span>
+        </button>
+      </div>
     </div>
-  </div>
-);
+  </motion.div>
+)
+
 
 const DataDashboard = ({ onDatasetLoaded }) => {
   const [datasetInfo, setDatasetInfo] = useState(null)
@@ -243,13 +262,13 @@ const DataDashboard = ({ onDatasetLoaded }) => {
     }
   }
 
-  // Fetch data quality and summary stats when dataset is loaded or tab changes
+  // Fetch necessary data when dataset is loaded or tab changes
   useEffect(() => {
     if (datasetInfo) {
       if (activeTab === 'quality') {
         fetchDataQuality()
       }
-      if (activeTab === 'overview') {
+      if (activeTab === 'overview' || activeTab === 'statistics') {
         fetchSummaryStats()
       }
       if (activeTab === 'visualizations') {
@@ -469,12 +488,16 @@ const DataDashboard = ({ onDatasetLoaded }) => {
                 <h3 className="text-lg font-semibold text-white mb-1">
                   {activeTab === 'overview' ? 'Dataset Overview' :
                    activeTab === 'visualizations' ? 'Data Visualization' :
+                   activeTab === 'statistics' ? 'Statistical Analysis' :
+                   activeTab === 'correlations' ? 'Correlation Analysis' :
                    activeTab === 'quality' ? 'Data Quality Analysis' :
                    'Dataset Explorer'}
                 </h3>
                 <p className="text-gray-400 text-sm">
                   {activeTab === 'overview' ? 'View dataset statistics and information' :
                    activeTab === 'visualizations' ? 'Create visualizations from your data' :
+                   activeTab === 'statistics' ? 'Advanced statistical analysis and insights' :
+                   activeTab === 'correlations' ? 'Explore relationships between variables' :
                    activeTab === 'quality' ? 'Check data quality and issues' :
                    'Explore and analyze your data'}
                 </p>
@@ -505,8 +528,32 @@ const DataDashboard = ({ onDatasetLoaded }) => {
                 />
               </ErrorBoundary>
             )}
+            {activeTab === 'statistics' && (
+              <ErrorBoundary>
+                <StatisticalInsights 
+                  data={datasetInfo?.data || []}
+                  columns={datasetInfo?.columns || []}
+                  numericColumns={datasetInfo?.numeric_columns || []}
+                  columnTypes={datasetInfo?.column_types || {}}
+                />
+              </ErrorBoundary>
+            )}
+            {activeTab === 'correlations' && (
+              <ErrorBoundary>
+                <CorrelationMatrix
+                  data={datasetInfo?.data || []}
+                  columnTypes={datasetInfo?.column_types || {}}
+                />
+              </ErrorBoundary>
+            )}
             {activeTab === 'quality' && (
-              <DataQualityView dataQuality={datasetInfo.data_quality} />
+              <DataQualityView 
+                dataInfo={{
+                  ...datasetInfo,
+                  data_types: datasetInfo?.data_types || datasetInfo?.column_types || {},
+                  data_quality: dataQuality || datasetInfo?.data_quality
+                }}
+              />
             )}
             {activeTab === 'explore' && (
               <div className="space-y-6">

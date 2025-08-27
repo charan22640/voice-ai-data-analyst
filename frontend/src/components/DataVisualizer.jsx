@@ -1,13 +1,12 @@
 import React, { useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  LineChart, Line, ScatterChart, Scatter, PieChart, Pie, Cell,
+  ScatterChart, Scatter, PieChart, Pie, Cell,
   ResponsiveContainer
 } from 'recharts';
 import { motion } from 'framer-motion';
 import { 
   BarChart3, 
-  LineChart as LineChartIcon, 
   ScatterChart as ScatterChartIcon,
   PieChart as PieChartIcon
 } from 'lucide-react';
@@ -55,17 +54,6 @@ const VisualizationTypeSelector = ({ type, onTypeChange }) => (
     >
       <BarChart3 className="w-4 h-4" />
       <span>Bar Chart</span>
-    </button>
-    <button
-      onClick={() => onTypeChange('line')}
-      className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
-        type === 'line'
-          ? 'bg-primary text-white'
-          : 'bg-slate-800/50 text-gray-400 hover:text-white'
-      }`}
-    >
-      <LineChartIcon className="w-4 h-4" />
-      <span>Line Chart</span>
     </button>
     <button
       onClick={() => onTypeChange('scatter')}
@@ -137,18 +125,24 @@ const Chart = ({ data, type, columns }) => {
   }
 
   const chartData = useMemo(() => {
-    if (type === 'pie' && columns.length >= 2) {
-      // For pie charts, aggregate data by the first column
+    if (type === 'pie' && columns.length === 2) {
+      // For pie chart, we need exactly 2 columns: one for categories and one for values
+      const categoryColumn = columns[0];
+      const valueColumn = columns[1];
+      
+      // Aggregate data by category
       const aggregated = data.reduce((acc, item) => {
-        const key = item[columns[0]];
-        acc[key] = (acc[key] || 0) + Number(item[columns[1]]);
+        const key = item[categoryColumn];
+        const value = Number(item[valueColumn]) || 0;
+        if (!acc[key]) {
+          acc[key] = { name: key, value: 0 };
+        }
+        acc[key].value += value;
         return acc;
       }, {});
-      
-      return Object.entries(aggregated).map(([name, value]) => ({
-        name,
-        value
-      }));
+
+      // Convert to array and sort by value
+      return Object.values(aggregated).sort((a, b) => b.value - a.value);
     }
     return data;
   }, [data, columns, type]);
@@ -193,55 +187,7 @@ const Chart = ({ data, type, columns }) => {
           </BarChart>
         );
 
-      case 'line':
-        // Filter only numeric series (ignore text columns like categories)
-        const numericSeries = columns.slice(1).filter(col =>
-          chartData.some(row => {
-            const v = row[col];
-            return v !== null && v !== '' && !isNaN(Number(v));
-          })
-        );
-        const skipped = columns.slice(1).filter(col => !numericSeries.includes(col));
-        return (
-          <>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis 
-                dataKey={columns[0]} 
-                stroke="#9CA3AF"
-                tick={{ fill: '#9CA3AF' }}
-                tickLine={{ stroke: '#4B5563' }}
-              />
-              <YAxis 
-                stroke="#9CA3AF"
-                tick={{ fill: '#9CA3AF' }}
-                tickLine={{ stroke: '#4B5563' }}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ color: '#9CA3AF' }} />
-              {numericSeries.map((column, index) => (
-                <Line
-                  key={column}
-                  type="monotone"
-                  dataKey={column}
-                  stroke={COLORS[index % COLORS.length]}
-                  strokeWidth={index === 0 ? 3 : 2}
-                  dot={{ stroke: '#ffffff', strokeWidth: 1, fill: COLORS[index % COLORS.length], r: 5 }}
-                  activeDot={{ r: 7 }}
-                  isAnimationActive={true}
-                />
-              ))}
-            </LineChart>
-            {skipped.length > 0 && (
-              <div className="mt-2 text-xs text-amber-400/80">
-                Skipped non-numeric columns: {skipped.join(', ')}
-              </div>
-            )}
-            {numericSeries.length === 0 && (
-              <div className="mt-4 text-sm text-red-400">No numeric columns selected. Pick at least one numeric column.</div>
-            )}
-          </>
-        );
+
 
       case 'scatter':
         if (columns.length < 2) {
@@ -275,33 +221,80 @@ const Chart = ({ data, type, columns }) => {
         );
 
       case 'pie':
-        if (columns.length < 2) {
-          return <div className="text-gray-400">Select two columns for a pie chart (category and value)</div>;
-        }
-        return (
-          <PieChart>
-            <Pie
-              data={chartData}
-              nameKey="name"
-              dataKey="value"
-              cx="50%"
-              cy="50%"
-              outerRadius={80}
-              label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-              labelLine={false}
-            >
-              {chartData.map((entry, index) => (
-                <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip content={<CustomTooltip />} />
-            <Legend 
-              wrapperStyle={{ color: '#9CA3AF' }}
-              formatter={(value, entry) => (
-                <span style={{ color: '#9CA3AF' }}>{value}</span>
+        if (columns.length !== 2) {
+          return (
+            <div className="text-center py-12 text-gray-400">
+              <p className="text-lg font-medium mb-4">Pie Chart Requirements:</p>
+              <p className="mb-2">Please select exactly two columns:</p>
+              <div className="inline-block text-left">
+                <p className="text-sm mb-2">1. A category column for segments (e.g., day, condition)</p>
+                <p className="text-sm">2. A numeric column for values (e.g., temperature, count)</p>
+              </div>
+              {columns.length > 2 && (
+                <p className="mt-4 text-amber-400">
+                  Too many columns selected. Please select only two columns.
+                </p>
               )}
-            />
-          </PieChart>
+            </div>
+          );
+        }
+
+        // Validate that the second column is numeric
+        const hasValidNumericData = data.some(item => !isNaN(Number(item[columns[1]])));
+        if (!hasValidNumericData) {
+          return (
+            <div className="text-center py-12 text-red-400">
+              <p className="font-medium">Invalid Column Selection</p>
+              <p className="text-sm mt-2">The second column must contain numeric values</p>
+              <p className="text-sm mt-1">Current selection: {columns[1]}</p>
+            </div>
+          );
+        }
+
+        return (
+          <div className="bg-slate-800/30 p-6 rounded-lg">
+            <h3 className="text-center text-gray-300 mb-4 font-medium">
+              {columns[1]} by {columns[0]}
+            </h3>
+            <ResponsiveContainer width="100%" height={400}>
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  nameKey="name"
+                  dataKey="value"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={160}
+                  label={({ name, value, percent }) => 
+                    `${name}: ${value.toLocaleString()} (${(percent * 100).toFixed(1)}%)`
+                  }
+                  labelLine={true}
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell 
+                      key={`${entry.name}-${index}`} 
+                      fill={entry.name.toLowerCase().includes('high') ? '#F59E0B' :
+                           entry.name.toLowerCase().includes('low') ? '#3B82F6' :
+                           COLORS[index % COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  content={<CustomTooltip />}
+                  formatter={(value) => value.toLocaleString()}
+                />
+                <Legend 
+                  layout="horizontal"
+                  verticalAlign="bottom" 
+                  align="center"
+                  wrapperStyle={{ 
+                    color: '#9CA3AF',
+                    paddingTop: '20px'
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         );
 
       default:
