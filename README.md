@@ -1,94 +1,202 @@
-# Nova – Voice‑Activated AI Data Analyst
+# 🚀 Nova - Voice-Activated AI Data Assistant
 
-Nova is a full‑stack AI data assistant that lets you upload CSV/Excel files, ask questions in natural language (voice or text), and receive insights, summaries, and visualizations. The project demonstrates end‑to‑end skills across modern React UI, Python/Flask analytics, and LLM integration.
+<div align="center">
 
-## Highlights
-- Voice chat with STT/TTS, conversational memory
-- Natural‑language analysis of structured data (CSV/XLS/XLSX)
-- Automated stats, correlations, distributions, outlier scans, and quality reports
-- On‑the‑fly charts (Matplotlib/Seaborn/Plotly) served from the backend
-- Gemini API integration with robust fallbacks and response cleaning
-- Modern UI (Tailwind + Framer Motion), dark theme, responsive
+[![React](https://img.shields.io/badge/React-18.2.0-61dafb?logo=react)](https://reactjs.org/)
+[![Flask](https://img.shie## ❗ Troubleshooting
 
-## Architecture
-- Frontend: React 18 + Vite, Tailwind CSS, Framer Motion
-- Backend: Flask (Python 3.11+), Pandas/NumPy, Plotly/Matplotlib/Seaborn
-- AI: Google Gemini API (configurable), server‑side prompt assembly and safety guards
-- TTS: Server‑side generation (gTTS pipeline) with frontend playback
-- Packaging: Dockerfiles (frontend/backend) and docker‑compose
+- **500 Chat Error**: Fixed by improving DataService with public helpers
+- **Message Truncation**: Resolved Gemini stopSequences issue with bold text
+- **Sample Data**: Frontend now properly handles upload responses
+- **React Keys**: Using crypto.randomUUID() for unique message IDs
+- **Missing Libraries**: Ensure venv is active and all deps installed
+- **CORS Issues**: Check CORS_ORIGINS matches frontend URLadge/Flask-2.3.3-000000?logo=flask)](https://flask.palletsprojects.com/)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776ab?logo=python)](https://python.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.3.0-06b6d4?logo=tailwindcss)](https://tailwindcss.com/)
+[![Gemini AI](https://img.shields.io/badge/Gemini-AI-4285f4?logo=google)](https://ai.google.dev/)
 
-Directory layout (simplified)
-```
-backend/
-   app.py                 # Flask app + CORS + blueprint wiring
-   routes/                # /api/ai/* and /api/data/* endpoints
-   services/              # Data, Gemini, and TTS services
-   static/                # Generated charts/audio + uploaded files
-frontend/
-   src/                   # React app (Assistant, Dashboard, etc.)
-   public/sample_datasets # Built‑in demo CSVs
-```
+[Features](#-features) • [Quick Start](#-quick-start) • [Usage](#-usage-guide) • [API Docs](#-api-documentation)
 
-## Quick start (local dev)
+</div>
 
-Prereqs
+---
+
+## 🎯 Project Overview
+
+Nova is a sophisticated voice-activated AI data assistant that combines advanced full-stack development with AI and data science capabilities. Upload datasets, ask questions naturally through voice or text, and receive AI-powered insights with visualizations.
+
+### Key Highlights
+
+- 🎤 **Voice Interaction**: Real-time speech recognition and text-to-speech
+- 🧠 **AI-Powered**: Smart conversations and data analysis using Gemini AI
+- 📊 **Data Analysis**: Process CSV/Excel files with automated insights
+- 🎨 **Modern UI**: Dark-themed glassmorphism design with smooth animations
+- 🐳 **Production Ready**: Fully dockerized with deployment configurations
+
+## ✨ Features
+
+### Voice & Chat Interface
+- **Voice Commands**: Natural speech recognition for hands-free interaction
+- **Text-to-Speech**: AI responses with high-quality voice synthesis
+- **Smart Context**: Maintains conversation history and dataset awareness
+- **Real-time Status**: Visual feedback for voice, TTS, and AI states
+
+### Data Analysis
+- **File Support**: Upload and analyze CSV, Excel (XLSX/XLS) files
+- **Automated Analysis**: 
+  - Statistical summaries and insights
+  - Correlation analysis
+  - Distribution plots
+  - Trend detection
+  - Anomaly identification
+- **Natural Queries**: Ask questions in plain English about your data
+- **Dynamic Visualizations**: Auto-generated charts and graphs
+
+### AI Intelligence
+- **Context-Aware**: Remembers conversation history and dataset details
+- **Smart Responses**: Detailed explanations of data patterns
+- **Query Suggestions**: Intelligent recommendations for data exploration
+- **Error Handling**: Graceful fallbacks and helpful error messages
+
+### Modern UI/UX
+- **Responsive Design**: Mobile-first approach, works on all devices
+- **Dark Theme**: Easy on the eyes with neon accents
+- **Smooth Animations**: Framer Motion transitions and feedback
+- **Accessibility**: Voice control and keyboard navigation
+
+## 🚀 Quick Start
+
+### Prerequisites
 - Node.js 18+
 - Python 3.11+
-- A Gemini API key (https://ai.google.dev)
+- [Gemini API Key](https://ai.google.dev/)
 
-Backend (Flask)
-1) In `backend/` create and activate a venv
-2) `pip install -r requirements.txt`
-3) Copy `.env.example` to `.env` and set `GEMINI_API_KEY`
-4) Run `python app.py` (default http://localhost:5000)
+### Local Development Setup
 
-Frontend (React)
-1) In `frontend/` run `npm install`
-2) Start dev server: `npm run dev` (default http://localhost:3000)
+1. **Clone & Install**
+   ```bash
+   git clone https://github.com/yourusername/nova-ai-assistant.git
+   cd nova-ai-assistant
+   ```
 
-Optional: set `VITE_API_URL=http://localhost:5000` in `frontend/.env` if your backend runs on a non‑default host/port.
+2. **Backend Setup**
+   ```bash
+   cd backend
+   python -m venv venv
+   source venv/bin/activate  # Windows: venv\\Scripts\\activate
+   pip install -r requirements.txt
+   ```
+   Create `backend/.env`:
+   ```
+   GEMINI_API_KEY=your_key_here
+   FLASK_DEBUG=True
+   PORT=5000
+   ```
 
-## Docker
-Use `docker-compose up --build` from the repo root. Ensure `backend/.env` contains `GEMINI_API_KEY` before building.
+3. **Frontend Setup**
+   ```bash
+   cd frontend
+   npm install
+   ```
+   Create `frontend/.env` if needed:
+   ```
+   VITE_API_URL=http://localhost:5000
+   ```
 
-## Using Nova
-1) Upload a dataset or click a sample dataset (Sales/Employee/Web Traffic)
-2) Browse the Overview, Visualizations, Statistics, Correlations, and Quality tabs
-3) Ask questions like:
-    - What is the average revenue by region?
-    - Show correlation between price and quantity
-    - Detect anomalies in sales
-4) Use the Assistant to chat (voice or text). Enable TTS for spoken replies.
+4. **Run Development Servers**
+   ```bash
+   # Terminal 1 (Backend)
+   cd backend
+   python app.py
 
-## API overview
+   # Terminal 2 (Frontend)
+   cd frontend
+   npm run dev
+   ```
 
-AI
-- `POST /api/ai/chat` – conversational responses using Gemini
-- `POST /api/ai/process` – single‑shot prompt + optional context
-- `POST /api/ai/tts` – generate speech from text
-- `GET  /api/ai/status` – model + key status
+### Docker Setup
+```bash
+# Add API key to backend/.env first
+echo "GEMINI_API_KEY=your_key_here" > backend/.env
 
-Data
-- `POST /api/data/upload` – upload CSV/XLS/XLSX and trigger profiling
-- `POST /api/data/query` – natural‑language analysis over the loaded dataset
-- `GET  /api/data/info` – dataset info (shape, columns, types)
-- `GET  /api/data/analytics-dashboard` – comprehensive metrics + charts
-- `GET  /api/data/quality` – data quality metrics
-- `GET  /api/data/summary` – summary stats
-
-## Configuration
-
-Backend (`backend/.env`)
+# Build and run
+docker-compose up --build
 ```
-GEMINI_API_KEY=your_key
-FLASK_DEBUG=False
-PORT=5000
-CORS_ORIGINS=http://localhost:3000
+
+## 📖 Usage Guide
+
+### Voice Interaction
+1. Click the microphone button or press Space to start voice input
+2. Speak naturally (e.g., "Analyze the sales trends")
+3. Get AI responses with optional voice playback
+
+### Data Analysis
+1. Upload CSV/Excel or select a sample dataset
+2. Ask questions like:
+   - "What's the average revenue by region?"
+   - "Show correlations between price and quantity"
+   - "Are there any outliers in the sales data?"
+3. Explore auto-generated visualizations and insights
+
+### Chat Features
+- **Context-Aware**: References previous conversations
+- **Data-Aware**: Understands current dataset details
+- **Multi-Modal**: Switch between voice and text seamlessly
+- **Rich Responses**: Text, charts, and voice synthesis
+
+## 🏗️ Project Structure
+
+```
+nova-assistant/
+├── backend/
+│   ├── app.py              # Flask application entry
+│   ├── routes/
+│   │   ├── ai.py          # AI & TTS endpoints
+│   │   └── data.py        # Data analysis endpoints
+│   ├── services/
+│   │   ├── gemini_service.py
+│   │   ├── data_service.py
+│   │   └── tts_service.py
+│   └── requirements.txt
+├── frontend/
+│   ├── src/
+│   │   ├── components/    # React components
+│   │   ├── hooks/        # Custom React hooks
+│   │   └── App.jsx
+│   └── package.json
+└── docker-compose.yml
 ```
 
-Frontend (`frontend/.env`)
+## 🔧 API Documentation
+
+### AI Endpoints
+```http
+POST /api/ai/chat           # Conversational AI with context
+POST /api/ai/tts           # Text-to-speech generation
+GET  /api/ai/status        # Service health check
 ```
-VITE_API_URL=http://localhost:5000
+
+### Data Endpoints
+```http
+POST /api/data/upload      # Upload & analyze data files
+POST /api/data/query       # Natural language queries
+GET  /api/data/info        # Dataset information
+GET  /api/data/insights    # Automated insights
+```
+
+## ⚙️ Configuration 
+
+### Backend (.env)
+```env
+GEMINI_API_KEY=your_key_here  # Required: Get from Google AI
+FLASK_DEBUG=False             # Set True for development
+PORT=5000                     # API server port
+CORS_ORIGINS=http://localhost:3000  # Frontend URL(s)
+```
+
+### Frontend (.env)
+```env
+VITE_API_URL=http://localhost:5000  # Backend API URL
 ```
 
 ## Troubleshooting
@@ -100,37 +208,41 @@ VITE_API_URL=http://localhost:5000
 - Missing Python libs: ensure the venv is active and `pip install -r backend/requirements.txt` completed (seaborn, scipy, scikit‑learn, etc.).
 - CORS: set `CORS_ORIGINS` (comma‑separated) or keep defaults for localhost ports.
 
-## Security notes
-- Keep `GEMINI_API_KEY` server‑side (backend `.env`). Do not expose it to the browser.
-- Uploaded files are stored under `backend/static/` for processing; clear when not needed.
+## 🔒 Security Notes
 
-## License
-MIT. See LICENSE if present.
+- Keep GEMINI_API_KEY on backend only - never expose to browser
+- Clean up uploaded files from backend/static/ when not needed
+- Use HTTPS in production for secure data transmission
 
-## Acknowledgements
-- Google AI (Gemini)
-- Flask and React communities
-- Tailwind, Plotly, Seaborn, Matplotlib
+## 🙌 Contributing
 
-# 🚀 Nova - Voice-Activated AI Data Assistant
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'feat: add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [Google AI](https://ai.google.dev/) - Gemini AI API
+- [React](https://reactjs.org/) - Frontend framework  
+- [Flask](https://flask.palletsprojects.com/) - Backend framework
+- [Tailwind CSS](https://tailwindcss.com/) - Styling
+- [Framer Motion](https://www.framer.com/motion/) - Animations
+
+---
 
 <div align="center">
 
-![Nova Logo](https://img.shields.io/badge/Nova-AI%20Assistant-00ff9f?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSIjMDBGRjlGIi8+Cjwvc3ZnPgo=)
-
-**A Professional, Resume-Ready Full-Stack AI Application**
-
-[![React](https://img.shields.io/badge/React-18.2.0-61dafb?logo=react)](https://reactjs.org/)
-[![Flask](https://img.shields.io/badge/Flask-2.3.3-000000?logo=flask)](https://flask.palletsprojects.com/)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776ab?logo=python)](https://python.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.3.0-06b6d4?logo=tailwindcss)](https://tailwindcss.com/)
-[![Gemini AI](https://img.shields.io/badge/Gemini-AI-4285f4?logo=google)](https://ai.google.dev/)
-
-[Live Demo](#) • [Features](#features) • [Setup](#quick-start) • [Documentation](#documentation)
+**⭐ Star this repo if you found it helpful!**
 
 </div>
 
----
+
 
 ## 🎯 Project Overview
 
