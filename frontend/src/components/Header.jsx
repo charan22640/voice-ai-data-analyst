@@ -2,7 +2,8 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { Activity, MessageSquare, Database, Wifi, WifiOff, AlertTriangle, BarChart3 } from 'lucide-react'
 
-const Header = ({ currentView, setCurrentView, connectionStatus }) => {
+// Header now hosts the status indicators (connection, dataset, mode)
+const Header = ({ currentView, setCurrentView, connectionStatus, datasetLoaded }) => {
   const getStatusIcon = () => {
     switch (connectionStatus) {
       case 'connected':
@@ -30,9 +31,9 @@ const Header = ({ currentView, setCurrentView, connectionStatus }) => {
   }
 
   return (
-    <header className="glass border-b border-white/10">
+    <header className="glass border-b border-white/10 sticky top-0 z-40">
       <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           {/* Logo */}
           <motion.div 
             className="flex items-center space-x-3"
@@ -83,22 +84,38 @@ const Header = ({ currentView, setCurrentView, connectionStatus }) => {
             </button>
           </motion.div>
 
-          {/* Connection Status */}
-          <motion.div 
-            className="flex items-center space-x-2 text-sm"
+          {/* Status group (moved from floating bar) */}
+          <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
+            className="hidden md:flex items-center"
           >
-            {getStatusIcon()}
-            <span className={`${
-              connectionStatus === 'connected' ? 'text-primary' : 
-              connectionStatus === 'connecting' ? 'text-yellow-400' :
-              'text-red-400'
-            }`}>
-              {getStatusText()}
-            </span>
+            <div className="glass rounded-full px-4 py-2 flex items-center gap-5">
+              <div className="flex items-center gap-2">
+                {getStatusIcon()}
+                <span className={`text-sm ${
+                  connectionStatus === 'connected' ? 'text-primary' :
+                  connectionStatus === 'connecting' ? 'text-yellow-400' :
+                  'text-red-400'
+                }`}>{getStatusText()}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Database className={`w-4 h-4 ${datasetLoaded ? 'text-primary' : 'text-gray-400'}`} />
+                <span className={`text-sm ${datasetLoaded ? 'text-primary' : 'text-gray-400'}`}>{datasetLoaded ? 'Dataset Loaded' : 'No Dataset'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-blue-400" />
+                <span className="text-sm text-blue-400">{currentView === 'assistant' ? 'Assistant' : 'Data'} Mode</span>
+              </div>
+            </div>
           </motion.div>
+
+          {/* Compact status (mobile) */}
+          <div className="md:hidden flex items-center gap-3">
+            {getStatusIcon()}
+            <div className={`w-2 h-2 rounded-full ${datasetLoaded ? 'bg-primary' : 'bg-gray-500'}`} title={datasetLoaded ? 'Dataset Loaded' : 'No Dataset'}></div>
+          </div>
         </div>
       </div>
     </header>

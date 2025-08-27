@@ -25,6 +25,7 @@ const AssistantUI = ({ currentDataset }) => {
   const [isTTSEnabled, setIsTTSEnabled] = useState(true)
   const [isMuted, setIsMuted] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
+  const lastAnnouncedDatasetKey = useRef(null)
   
   const chatContainerRef = useRef(null)
   const inputRef = useRef(null)
@@ -46,30 +47,34 @@ const AssistantUI = ({ currentDataset }) => {
     }
   }, [messages])
 
-  // Update assistant message when dataset is loaded
+  // Update assistant message when dataset is loaded (guard against duplicates in StrictMode)
   useEffect(() => {
     if (currentDataset && currentDataset.success) {
-      // Create a descriptive message about the loaded dataset
-      const rows = currentDataset.shape?.[0] || currentDataset.total_rows;
-      const cols = currentDataset.shape?.[1] || currentDataset.total_columns;
-      const summary = currentDataset.ai_context || currentDataset.ai_summary;
-      
-      let content = `I see you've loaded a dataset! `;
-      
+      const rows = currentDataset.shape?.[0] || currentDataset.total_rows
+      const cols = currentDataset.shape?.[1] || currentDataset.total_columns
+      // Build a lightweight key to identify the same dataset
+      const key = `${rows}|${cols}|${currentDataset.brief_summary || ''}`
+
+      if (lastAnnouncedDatasetKey.current === key) return
+
+      let content = `I see you've loaded a dataset! `
       if (currentDataset.brief_summary) {
-        content += `${currentDataset.brief_summary}. `;
+        content += `${currentDataset.brief_summary}. `
       }
-      
-      content += `The dataset has ${rows} rows and ${cols} columns.`;
-      content += "\n\nWhat would you like to know about it? You can ask me about specific columns, statistics, or patterns in the data.";
-      
+      content += `The dataset has ${rows} rows and ${cols} columns.`
+      content += "\n\nWhat would you like to know about it? You can ask me about specific columns, statistics, or patterns in the data."
+
       const datasetInfo = {
         id: genId(),
         type: 'assistant',
-        content: content,
+        content,
         timestamp: new Date().toISOString()
       }
       setMessages(prev => [...prev, datasetInfo])
+      lastAnnouncedDatasetKey.current = key
+    } else if (!currentDataset) {
+      // If dataset cleared, reset the guard so new loads will announce
+      lastAnnouncedDatasetKey.current = null
     }
   }, [currentDataset])
 
@@ -180,6 +185,15 @@ const AssistantUI = ({ currentDataset }) => {
     }
   }
 
+  // Auto-grow textarea height
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    const max = 160 // px
+    el.style.height = Math.min(el.scrollHeight, max) + 'px'
+  }, [inputText])
+
   const clearChat = () => {
     setMessages([{
       id: genId(),
@@ -190,7 +204,7 @@ const AssistantUI = ({ currentDataset }) => {
   }
 
   return (
-    <div className="w-4/5 mx-auto">
+    <div className="mx-auto w-full max-w-5xl px-0 md:px-2">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -246,7 +260,7 @@ const AssistantUI = ({ currentDataset }) => {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="glass rounded-2xl p-6 mb-4 h-[600px] flex flex-col"
+        className="glass rounded-2xl p-4 md:p-6 mb-4 min-h-[60vh] max-h-[75vh] flex flex-col"
       >
         {/* Chat Header */}
         <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
@@ -263,12 +277,12 @@ const AssistantUI = ({ currentDataset }) => {
         </div>
 
         {/* Messages */}
-        <div ref={chatContainerRef} className="flex-1 overflow-y-auto space-y-4 mb-4">
+        <div ref={chatContainerRef} className="flex-1 overflow-y-auto space-y-4 mb-3 pr-1">
           <ChatHistory messages={messages} isLoading={isLoading} />
         </div>
 
         {/* Input Area */}
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-2 md:gap-3 sticky bottom-0 pt-2 bg-transparent">
           <VoiceButton
             isListening={isListening}
             onClick={handleVoiceToggle}
@@ -281,8 +295,13 @@ const AssistantUI = ({ currentDataset }) => {
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyPress={handleKeyPress}
+              onInput={(e) => {
+                // keep height in sync if browser doesn't trigger effect soon enough
+                e.currentTarget.style.height = 'auto'
+                e.currentTarget.style.height = Math.min(e.currentTarget.scrollHeight, 160) + 'px'
+              }}
               placeholder="Type a message or use voice input..."
-              className="w-full bg-slate-800/50 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 resize-none focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/25 transition-all"
+              className="w-full bg-slate-800/50 border border-white/20 rounded-lg px-3 md:px-4 py-3 text-white placeholder-gray-400 resize-none focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/25 transition-all min-h-[44px] max-h-[160px] overflow-auto"
               rows={1}
               disabled={isLoading}
             />
@@ -302,50 +321,40 @@ const AssistantUI = ({ currentDataset }) => {
             )}
           </motion.button>
 
-          {/* TTS Controls */}
-          <button
-            onClick={() => {
-              setIsMuted(!isMuted)
-              stopSpeaking()
-            }}
-            className={`p-3 rounded-lg transition-all ${isMuted ? 'text-gray-400' : 'text-primary'}`}
-            title={isMuted ? 'Unmute' : 'Mute'}
-          >
-            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-          </button>
-          <button
-            onClick={() => {
-              pauseSpeaking()
-              setIsPaused(true)
-            }}
-            className={`p-3 rounded-lg transition-all ${isSpeaking && !isPaused ? 'text-primary' : 'text-gray-400'}`}
-            disabled={!isSpeaking || isPaused}
-            title="Pause"
-          >
-            <Pause className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => {
-              resumeSpeaking()
-              setIsPaused(false)
-            }}
-            className={`p-3 rounded-lg transition-all ${isSpeaking && isPaused ? 'text-primary' : 'text-gray-400'}`}
-            disabled={!isSpeaking || !isPaused}
-            title="Resume"
-          >
-            <Play className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => {
-              stopSpeaking()
-              setIsPaused(false)
-            }}
-            className="p-3 rounded-lg transition-all text-gray-400"
-            disabled={!isSpeaking}
-            title="Stop"
-          >
-            <StopCircle className="w-5 h-5" />
-          </button>
+          {/* TTS Controls (hidden on very small screens) */}
+          <div className="hidden sm:flex items-center">
+            <button
+              onClick={() => { setIsMuted(!isMuted); stopSpeaking() }}
+              className={`p-3 rounded-lg transition-all ${isMuted ? 'text-gray-400' : 'text-primary'}`}
+              title={isMuted ? 'Unmute' : 'Mute'}
+            >
+              {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+            </button>
+            <button
+              onClick={() => { pauseSpeaking(); setIsPaused(true) }}
+              className={`p-3 rounded-lg transition-all ${isSpeaking && !isPaused ? 'text-primary' : 'text-gray-400'}`}
+              disabled={!isSpeaking || isPaused}
+              title="Pause"
+            >
+              <Pause className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => { resumeSpeaking(); setIsPaused(false) }}
+              className={`p-3 rounded-lg transition-all ${isSpeaking && isPaused ? 'text-primary' : 'text-gray-400'}`}
+              disabled={!isSpeaking || !isPaused}
+              title="Resume"
+            >
+              <Play className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => { stopSpeaking(); setIsPaused(false) }}
+              className="p-3 rounded-lg transition-all text-gray-400"
+              disabled={!isSpeaking}
+              title="Stop"
+            >
+              <StopCircle className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Voice Status */}
@@ -361,7 +370,7 @@ const AssistantUI = ({ currentDataset }) => {
       </motion.div>
 
       {/* Feature Cards */}
-      <div className="grid md:grid-cols-3 gap-3">
+  <div className="grid md:grid-cols-3 gap-3">
         {[
           {
             title: 'Voice Commands',

@@ -3,7 +3,6 @@ import { motion } from 'framer-motion'
 import Header from './components/Header'
 import AssistantUI from './components/AssistantUI'
 import DataDashboard from './components/DataDashboard'
-import StatusBar from './components/StatusBar'
 
 const App = () => {
   const [currentView, setCurrentView] = useState('assistant') // 'assistant' or 'data'
@@ -48,9 +47,10 @@ const App = () => {
           currentView={currentView} 
           setCurrentView={setCurrentView}
           connectionStatus={connectionStatus}
+          datasetLoaded={datasetLoaded}
         />
         
-        <main className="container mx-auto px-4 py-8">
+        <main className="container mx-auto px-4 py-6 md:py-8">
           <motion.div
             key={currentView}
             initial={{ opacity: 0, y: 20 }}
@@ -71,11 +71,7 @@ const App = () => {
           </motion.div>
         </main>
 
-        <StatusBar 
-          connectionStatus={connectionStatus}
-          datasetLoaded={datasetLoaded}
-          currentView={currentView}
-        />
+  {/* Floating StatusBar removed; indicators live in Header now */}
       </div>
     </div>
   )
