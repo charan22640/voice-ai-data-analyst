@@ -1,12 +1,19 @@
 from flask import Blueprint, request, jsonify
 from services.gemini_service import GeminiService
 from services.tts_service import TTSService
+from services.data_service import DataService
 import os
 import logging
 
 ai_bp = Blueprint('ai', __name__)
 gemini_service = GeminiService()
 tts_service = TTSService()
+# Try to reuse the shared DataService instance created in routes/data.py
+try:
+    from routes.data import data_service as shared_data_service  # type: ignore
+    _shared_ds = shared_data_service
+except Exception:
+    _shared_ds = DataService()
 
 @ai_bp.route('/process', methods=['POST'])
 def process():
@@ -64,14 +71,15 @@ def chat():
         
         # If we have data loaded, add data-specific context
         if data_context and 'success' in data_context:
-            from services.data_service import DataService
-            data_service = DataService()
-            
-            # Get rich data context
-            analysis_context['data_summary'] = data_service.get_brief_summary()
-            analysis_context['data_profile'] = data_service.get_data_profile()
-            analysis_context['column_summaries'] = data_service.get_column_summaries()
-            analysis_context['suggested_analyses'] = data_service.suggest_analyses(message)
+            data_service = _shared_ds
+            # Get rich data context safely
+            try:
+                analysis_context['data_summary'] = data_service.get_brief_summary()
+                analysis_context['data_profile'] = data_service.get_data_profile()
+                analysis_context['column_summaries'] = data_service.get_column_summaries()
+                analysis_context['suggested_analyses'] = data_service.suggest_analyses(message)
+            except Exception:
+                pass
 
         conversation_history = data.get('history', [])
 
@@ -94,12 +102,11 @@ def chat():
         
         # Add dataset context if available
         try:
-            from services.data_service import DataService
-            data_service = DataService()
+            data_service = _shared_ds
             if data_service.current_data is not None:
                 dataset_context = data_service.get_ai_dataset_context()
                 context += f"\nCurrent Dataset Context:\n{dataset_context}\n---\n"
-        except:
+        except Exception:
             pass  # Continue without dataset context if there's an error
 
         result = gemini_service.generate_response(message, context)

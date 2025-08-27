@@ -36,6 +36,74 @@ class DataService(SerializationMixin):
         self.analysis_history = []  # Track previous analyses
         self.column_meanings = {}  # AI-inferred column meanings
         self.insights_cache = {}  # Cache AI insights
+    
+    # ----------------------------
+    # Public helpers expected by routes/ai.py
+    # ----------------------------
+    def get_data_profile(self) -> Dict[str, Any]:
+        """Return a compact dataset profile.
+
+        Safe to call even when no dataset is loaded. In that case, returns
+        a stub object with loaded=False so callers can handle gracefully.
+        """
+        if self.current_data is None:
+            return {
+                'loaded': False,
+                'message': 'No dataset loaded'
+            }
+
+        # Ensure core metadata is available
+        if not self.data_info:
+            self.data_info = self._generate_data_info()
+        if not self.data_context:
+            self.data_context = self._build_data_context()
+
+        profile = {
+            'loaded': True,
+            'shape': self.current_data.shape,
+            'columns': list(self.current_data.columns),
+            'summary': self.get_summary_stats(),
+            'quality': self.get_data_quality(),
+            'info': self.data_info,
+            'context': self.data_context,
+        }
+        return self._json_safe(profile)
+
+    def get_column_summaries(self) -> Dict[str, Any]:
+        """Return per-column summaries used by AI chat context.
+
+        Falls back to an empty dict when no dataset is loaded.
+        """
+        if self.current_data is None:
+            return {}
+        summaries: Dict[str, Any] = {}
+        for col in self.current_data.columns:
+            summaries[col] = self._get_column_detailed_info(col)
+        return self._json_safe(summaries)
+
+    def suggest_analyses(self, message: Optional[str] = None) -> List[str]:
+        """Public wrapper around internal suggestions with light intent boost.
+
+        - Uses internal heuristics to suggest analyses based on data type.
+        - Optionally boosts suggestions using keywords from the user's message.
+        """
+        base = self._suggest_analyses()
+        if message:
+            m = message.lower()
+            if any(k in m for k in ['trend', 'time', 'over time']):
+                base.insert(0, 'Trend analysis over time')
+            if any(k in m for k in ['correlation', 'correlate', 'relationship']):
+                base.insert(0, 'Correlation analysis between numeric variables')
+            if any(k in m for k in ['outlier', 'anomaly', 'unusual']):
+                base.insert(0, 'Outlier detection on key numeric columns')
+        # Deduplicate while preserving order and keep it short
+        seen = set()
+        deduped = []
+        for s in base:
+            if s not in seen:
+                seen.add(s)
+                deduped.append(s)
+        return deduped[:10]
         
     def get_data_quality(self) -> Dict[str, Any]:
         """Calculate data quality metrics for the current dataset"""
